@@ -112,6 +112,22 @@ jobs:
             aarch64-linux-gnu-gcc --version | head -n1
           fi
 
+      # hwloc (openmpi's dependency) runs autoreconf from its git-style source
+      # tree, and openmpi's own vcpkg_make_configure(COPY_SOURCE) pass uses the
+      # autotools shipped with the release tarball plus these helpers. The
+      # macOS runner image does not ship autoconf by default.
+      - name: Install macOS build prerequisites
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew list autoconf >/dev/null 2>&1 || brew install autoconf
+          brew list automake >/dev/null 2>&1 || brew install automake
+          brew list libtool >/dev/null 2>&1 || brew install libtool
+          brew list pkg-config >/dev/null 2>&1 || brew install pkg-config
+          autoconf --version | head -n1
+          automake --version | head -n1
+
       - name: Bootstrap vcpkg (Windows)
         if: runner.os == 'Windows'
         shell: cmd
