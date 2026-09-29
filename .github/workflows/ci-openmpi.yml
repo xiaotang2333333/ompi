@@ -1,0 +1,295 @@
+name: openmpi 5.0.11 overlay-port CI
+
+# Validates that the overlay port in ./overlay-ports/openmpi builds and installs
+# for the official vcpkg triplets. The manifest under test is the repository root
+# vcpkg.json (manifest mode, configuration.overlay-ports -> ./overlay-ports).
+#
+# openmpi declares supports = "!windows & !android & !x86 & !arm32", so of the 13
+# official triplets only x64-linux, arm64-linux and arm64-osx can actually build.
+# Every official triplet is still exercised:
+#   - supported   : full configure/build/install + artifact verification
+#   - unsupported : verify vcpkg rejects the port for that triplet (dry-run must
+#                   fail with the "is only supported on" message), i.e. the
+#                   supports expression keeps working as intended
+#
+# This job never runs on the community triplets; only triplets/ (official) ones.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Same commit as the local vcpkg checkout this port was developed against, so
+  # the official triplet definitions and dependency versions match exactly. Also
+  # pinned as builtin-baseline in the root vcpkg.json.
+  VCPKG_BASELINE: 07f4812200df3d3c931c0c8a6081d3b21fe2bf9f
+  VCPKG_DISABLE_METRICS: "1"
+
+jobs:
+  plan:
+    name: plan matrix
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+    steps:
+      - id: gen
+        shell: bash
+        run: |
+          set -euo pipefail
+          # All 13 official triplets (triplets/*.cmake, no community ones).
+          # crosslinux: arm64-linux is cross-compiled on the ubuntu runner with
+          # the gcc-13 aarch64 toolchain, provisioned exactly like the official
+          # vcpkg CI image (scripts/azure-pipelines/linux-arm64/Dockerfile).
+          matrix='[
+            {"triplet":"x64-windows",            "os":"windows-latest",  "crosslinux":false},
+            {"triplet":"x64-windows-static",     "os":"windows-latest",  "crosslinux":false},
+            {"triplet":"x64-windows-static-md",  "os":"windows-latest",  "crosslinux":false},
+            {"triplet":"x64-windows-release",    "os":"windows-latest",  "crosslinux":false},
+            {"triplet":"x86-windows",            "os":"windows-latest",  "crosslinux":false},
+            {"triplet":"arm64-windows",          "os":"windows-latest",  "crosslinux":false},
+            {"triplet":"arm64-windows-static-md","os":"windows-latest",  "crosslinux":false},
+            {"triplet":"x64-android",            "os":"ubuntu-24.04",    "crosslinux":false},
+            {"triplet":"arm64-android",          "os":"ubuntu-24.04",    "crosslinux":false},
+            {"triplet":"arm-neon-android",       "os":"ubuntu-24.04",    "crosslinux":false},
+            {"triplet":"x64-linux",              "os":"ubuntu-24.04",    "crosslinux":false},
+            {"triplet":"arm64-linux",            "os":"ubuntu-24.04",    "crosslinux":true},
+            {"triplet":"arm64-osx",              "os":"macos-latest",    "crosslinux":false}
+          ]'
+          matrix=$(printf '%s' "$matrix" | jq -c .)
+          echo "matrix={\"include\":$matrix}" >> "$GITHUB_OUTPUT"
+          echo "Planned official triplets:"
+          printf '%s' "$matrix" | jq -r '.[] | "  \(.triplet)  ->  \(.os)"'
+
+  build:
+    name: ${{ matrix.triplet }}
+    needs: plan
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          df -h /
+
+      # Mirrors scripts/azure-pipelines/linux-arm64/Dockerfile: the autotools
+      # toolchain vcpkg's make-based ports need, plus the gcc-13 aarch64 cross
+      # toolchain registered via update-alternatives so plain
+      # aarch64-linux-gnu-gcc/g++ resolve to gcc-13 (vcpkg's linux.cmake
+      # toolchain auto-detects them for arm64-linux; no overlay triplet, no
+      # hand-written chainload file).
+      - name: Install Linux build prerequisites
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config \
+            autoconf autoconf-archive automake libtool libtool-bin m4 \
+            gettext bison flex perl \
+            zip unzip tar git python3
+          if [ "${{ matrix.crosslinux }}" = "true" ]; then
+            sudo apt-get install -y --no-install-recommends \
+              gcc-13-aarch64-linux-gnu g++-13-aarch64-linux-gnu
+            sudo update-alternatives --install /usr/bin/aarch64-linux-gnu-gcc aarch64-linux-gnu-gcc /usr/bin/aarch64-linux-gnu-gcc-13 100
+            sudo update-alternatives --install /usr/bin/aarch64-linux-gnu-g++ aarch64-linux-gnu-g++ /usr/bin/aarch64-linux-gnu-g++-13 100
+            aarch64-linux-gnu-gcc --version | head -n1
+          fi
+
+      - name: Bootstrap vcpkg (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/microsoft/vcpkg.git vcpkg
+          git -C vcpkg checkout %VCPKG_BASELINE%
+          vcpkg\bootstrap-vcpkg.bat -disableMetrics
+
+      - name: Bootstrap vcpkg (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none --no-checkout https://github.com/microsoft/vcpkg.git vcpkg
+          git -C vcpkg checkout "$VCPKG_BASELINE"
+          ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
+      - name: Show overlay port under test
+        shell: bash
+        run: |
+          echo "baseline : $VCPKG_BASELINE"
+          echo "triplet  : ${{ matrix.triplet }}"
+          grep -E '"(name|version|port-version)"' overlay-ports/openmpi/vcpkg.json
+          grep -E '^\s+SHA512' overlay-ports/openmpi/portfile.cmake
+
+      # Dry-run decides which of the two modes this triplet takes:
+      #   supported   -> resolution succeeds, build below
+      #   unsupported -> resolution fails with the supports message: that IS the
+      #                  expected result for this triplet, so pass the job
+      #                  (anything else still fails the job)
+      # The supports check happens before compiler detection, so the
+      # unsupported path needs no target toolchain at all.
+      - name: Resolve manifest (dry run, Windows)
+        if: runner.os == 'Windows'
+        id: resolve_win
+        shell: cmd
+        run: |
+          "%GITHUB_WORKSPACE%\vcpkg\vcpkg.exe" install --dry-run --triplet ${{ matrix.triplet }} > dryrun.log 2>&1
+          set code=%ERRORLEVEL%
+          type dryrun.log
+          findstr /C:"is only supported on" dryrun.log >nul
+          if %ERRORLEVEL%==0 (
+            echo supported=false>> "%GITHUB_OUTPUT%"
+            echo ::notice::openmpi does not support ${{ matrix.triplet }} - expected, supports expression verified
+            exit /b 0
+          )
+          if not %code%==0 exit /b %code%
+          echo supported=true>> "%GITHUB_OUTPUT%"
+
+      - name: Resolve manifest (dry run, Unix)
+        if: runner.os != 'Windows'
+        id: resolve_unix
+        shell: bash
+        run: |
+          set +e
+          "$GITHUB_WORKSPACE/vcpkg/vcpkg" install --dry-run --triplet ${{ matrix.triplet }} > dryrun.log 2>&1
+          code=$?
+          cat dryrun.log
+          if grep -q "is only supported on" dryrun.log; then
+            echo "supported=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::openmpi does not support ${{ matrix.triplet }} - expected, supports expression verified"
+            exit 0
+          fi
+          if [ "$code" -ne 0 ]; then exit "$code"; fi
+          echo "supported=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build and install openmpi (Windows)
+        if: runner.os == 'Windows' && steps.resolve_win.outputs.supported == 'true'
+        shell: cmd
+        run: '%GITHUB_WORKSPACE%\vcpkg\vcpkg.exe install --triplet ${{ matrix.triplet }} --clean-after-build'
+
+      - name: Build and install openmpi (Unix)
+        if: runner.os != 'Windows' && steps.resolve_unix.outputs.supported == 'true'
+        shell: bash
+        run: |
+          "$GITHUB_WORKSPACE/vcpkg/vcpkg" install --triplet ${{ matrix.triplet }} --clean-after-build
+
+      - name: Verify installed artifacts
+        if: (runner.os == 'Windows' && steps.resolve_win.outputs.supported == 'true') || (runner.os != 'Windows' && steps.resolve_unix.outputs.supported == 'true')
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="vcpkg_installed/${{ matrix.triplet }}"
+          test -d "$root" || { echo "::error::install root missing: $root"; exit 1; }
+          ls -la "$root"
+          ls -la "$root/lib" || true
+          # openmpi is dynamic-only (vcpkg_check_linkage(ONLY_DYNAMIC_LIBRARY)),
+          # so the MPI runtime library must be present in one of these forms.
+          count=$(find "$root" -type f \( \
+                    -name 'libmpi*.so*' -o -name 'libmpi*.dylib' -o -name 'mpi.lib' \
+                    -o -name 'libmpi*.dll' \) 2>/dev/null | wc -l || true)
+          echo "libmpi artifacts: $count"
+          test "$count" -gt 0 || { echo "::error::libmpi missing under $root"; exit 1; }
+          # The pkg-config files vcpkg_fixup_pkgconfig() kept must resolve, and
+          # ompi-c is the C bindings .pc every supported platform ships.
+          test -d "$root/lib/pkgconfig" || { echo "::error::pkgconfig dir missing"; exit 1; }
+          ls "$root/lib/pkgconfig"
+          if [ "${{ runner.os }}" != "Windows" ]; then
+            export PKG_CONFIG_PATH="$PWD/$root/lib/pkgconfig"
+            # system pkg-config when available, otherwise the host pkgconf vcpkg
+            # just installed for this manifest (some runners lack pkg-config)
+            if command -v pkg-config >/dev/null 2>&1; then
+              PC=pkg-config
+            else
+              PC=$(find vcpkg_installed -type f -name 'pkgconf*' 2>/dev/null | head -n1)
+            fi
+            test -n "$PC" || { echo "::error::no pkg-config available"; exit 1; }
+            "$PC" --exists ompi-c
+            "$PC" --modversion ompi-c
+            "$PC" --cflags --libs ompi-c
+          fi
+
+      # Real end-to-end proof on the primary supported triplet: compile, link
+      # and start a trivial MPI program against the just-installed port.
+      # LD_LIBRARY_PATH is needed because DT_RUNPATH does not apply
+      # transitively to libmpi's own vcpkg dependencies.
+      - name: Link and run a trivial MPI program (x64-linux)
+        if: matrix.triplet == 'x64-linux' && (runner.os == 'Windows' && steps.resolve_win.outputs.supported == 'true' || runner.os != 'Windows' && steps.resolve_unix.outputs.supported == 'true')
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="vcpkg_installed/${{ matrix.triplet }}"
+          export PKG_CONFIG_PATH="$PWD/$root/lib/pkgconfig"
+          cat > "$RUNNER_TEMP/mpi-hello.c" <<'EOF'
+          #include <mpi.h>
+          int main(int argc, char **argv) {
+            MPI_Init(&argc, &argv);
+            MPI_Finalize();
+            return 0;
+          }
+          EOF
+          cc "$RUNNER_TEMP/mpi-hello.c" $(pkg-config --cflags --libs ompi-c) \
+            -Wl,-rpath-link,"$PWD/$root/lib" -o "$RUNNER_TEMP/mpi-hello"
+          LD_LIBRARY_PATH="$PWD/$root/lib" "$RUNNER_TEMP/mpi-hello" \
+            || { echo "::error::MPI hello failed to start"; ldd "$RUNNER_TEMP/mpi-hello"; exit 1; }
+          echo "MPI program compiled, linked and started OK"
+
+      - name: Surface failure cause as annotation
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          msg=$(
+            grep -rhoiE "error: building [^ ]+ failed with: [A-Z_]+" vcpkg/buildtrees 2>/dev/null | sort -u | head -2
+            grep -rhoE "CMake Error at [^:]+:[0-9]+" vcpkg/buildtrees 2>/dev/null | sort -u | head -4
+            grep -rhoiE "error: [^\"]{0,120}" dryrun.log 2>/dev/null | sort -u | head -4
+            grep -rhoiE "configure: error: [^\"]{0,120}" vcpkg/buildtrees/openmpi/*.log 2>/dev/null | sort -u | head -6
+            grep -rhoiE "error C[0-9]{4}: [^\"']{0,90}" vcpkg/buildtrees/openmpi 2>/dev/null | sort -u | head -4
+            grep -rhoiE "undefined reference to [^\"']{0,90}" vcpkg/buildtrees/openmpi 2>/dev/null | sort -u | head -4
+          )
+          echo "--- failure summary for ${{ matrix.triplet }} ---"
+          echo "$msg"
+          msg=${msg//'%'/'%25'}
+          msg=${msg//$'\r'/}
+          msg=${msg//$'\n'/':'}
+          echo "::error::${msg:0:900}"
+
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.triplet }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            vcpkg/buildtrees/openmpi/*.log
+            vcpkg/buildtrees/openmpi/install-*.log
+            dryrun.log
+
+  ci-success:
+    name: all official triplets
+    needs: [plan, build]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check every matrix job succeeded
+        shell: bash
+        run: |
+          result='${{ needs.build.result }}'
+          echo "build matrix result: $result"
+          test "$result" = "success"

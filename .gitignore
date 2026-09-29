@@ -1,0 +1,13 @@
+# downloaded source tarballs
+/*.tar.gz
+/*.tar.bz2
+/*.zip
+
+# vcpkg runs
+/vcpkg/
+/vcpkg_installed/
+/dryrun.log
+
+# local build outputs
+/build/
+/out/
