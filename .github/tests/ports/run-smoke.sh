@@ -3,7 +3,6 @@ set -euo pipefail
 
 root="$GITHUB_WORKSPACE/installed/$TRIPLET"
 source_file="$GITHUB_WORKSPACE/.github/tests/ports/$PORT.c"
-test -f "$source_file"
 test -s "$root/share/$PORT/copyright"
 
 compiler=cc
@@ -37,10 +36,19 @@ case "$PORT" in
   portals4) libraries=(-lportals -lev -pthread -ldl -lrt -lm) ;;
   pvfs2) libraries=(-lpvfs2 -pthread -ldl -lrt -lm) ;;
   psm2) modules=(libpsm2); libraries=(-lpsm2 -lnuma -pthread -ldl -lrt) ;;
+  rdma-core) modules=(libibverbs librdmacm); libraries=(-libverbs -lrdmacm -lnl-route-3 -lnl-3 -pthread -ldl) ;;
+  kmod) modules=(libkmod); libraries=(-lkmod) ;;
+  ndctl) modules=(libndctl libdaxctl); libraries=(-lndctl -ldaxctl -ludev -lkmod -luuid -llzma -llz4 -lzstd -lcap -lmount -lcrypt -pthread -ldl -lm -lrt) ;;
+  libsystemd)
+    source_file="$GITHUB_WORKSPACE/.github/tests/ports/libudev.c"
+    modules=(libudev)
+    libraries=(-ludev -llzma -llz4 -lzstd -lcap -lmount -lcrypt -pthread -ldl -lm -lrt)
+    ;;
   xpmem) modules=(cray-xpmem); libraries=(-lxpmem -pthread) ;;
   openmpi) modules=(ompi-c); libraries=(-lmpi) ;;
   *) echo "No consumer mapping for $PORT" >&2; exit 1 ;;
 esac
+test -f "$source_file"
 
 configs=(release debug)
 if [[ "$LINKAGE" == headers ]]; then

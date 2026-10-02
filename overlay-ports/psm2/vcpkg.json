@@ -8,6 +8,12 @@
   "dependencies": [
     "numactl",
     {
+      "name": "rdma-core",
+      "features": [
+        "kernel-headers"
+      ]
+    },
+    {
       "name": "vcpkg-cmake-get-vars",
       "host": true
     }

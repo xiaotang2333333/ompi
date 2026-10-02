@@ -6,18 +6,10 @@ vcpkg_from_github(
     HEAD_REF master
 )
 
-# libpsm2 includes <rdma/hfi/hfi1_user.h> unconditionally. The rdma-core vcpkg
-# package publishes that kernel UAPI header only inside its build tree
-# (publish_internal_headers), so vendor the same header, pinned to the
-# baseline rdma-core v62.0, for this build. It is a build-time input only.
-vcpkg_download_distfile(HFI1_USER_HEADER
-    URLS "https://raw.githubusercontent.com/linux-rdma/rdma-core/v62.0/kernel-headers/rdma/hfi/hfi1_user.h"
-    FILENAME "rdma-core-v62.0-hfi1_user.h"
-    SHA512 bc5bdb8c3dee8974a0e9fa50704980a93f99c21c0585ee54ce9302a25ff11333be6fdd810cba76d27acf450eea22cd812636cbed6736b4e9b6783485c62c1115
-)
-file(INSTALL "${HFI1_USER_HEADER}"
-     DESTINATION "${SOURCE_PATH}/include/vcpkg-uapi/rdma/hfi"
-     RENAME "hfi1_user.h")
+# libpsm2 includes <rdma/hfi/hfi1_user.h> unconditionally. The header comes
+# from the rdma-core overlay port's kernel-headers feature
+# (include/rdma/hfi/hfi1_user.h and its transitive includes), so no raw
+# header download is needed here.
 
 vcpkg_cmake_get_vars(cmake_vars_file)
 include("${cmake_vars_file}")
@@ -55,7 +47,7 @@ foreach(psm2_config IN LISTS PSM2_CONFIGS)
         "BASE_FLAGS=${psm2_flags}"
         "EXTRA_LIBS=${psm2_extra_libs}"
         "WERROR="
-        "IFS_HFI_HEADER_PATH=${SOURCE_PATH}/include/vcpkg-uapi"
+        "IFS_HFI_HEADER_PATH=${CURRENT_INSTALLED_DIR}/include"
         "OUTDIR=${psm2_build_dir}"
     )
     if(DEFINED VCPKG_DETECTED_CMAKE_AR AND NOT VCPKG_DETECTED_CMAKE_AR STREQUAL "")
