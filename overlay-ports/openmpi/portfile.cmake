@@ -11,7 +11,11 @@ vcpkg_download_distfile(ARCHIVE
 vcpkg_extract_source_archive(
     SOURCE_PATH
     ARCHIVE "${ARCHIVE}"
-    PATCHES fix-optional-packages.patch
+    PATCHES
+        fix-optional-packages.patch
+        # test/monitoring and test/spc build noinst programs during "make all"
+        # and have no configure switch.  Keep the check_PROGRAMS-only subdirs.
+        skip-unneeded-noinst-tests.patch
 )
 
 # The release tarball ships pre-generated aclocal.m4/Makefile.in/configure
@@ -82,6 +86,9 @@ vcpkg_make_configure(
     LANGUAGES ${OPENMPI_LANGUAGES}
     OPTIONS
         --disable-dependency-tracking
+        # Do not regenerate the shipped documentation with a build-host
+        # Sphinx; the tarball's prebuilt man/html trees are installed instead.
+        --disable-sphinx
         "--with-hwloc=${CURRENT_INSTALLED_DIR}"
         "--with-libevent=${CURRENT_INSTALLED_DIR}"
         --with-pmix=internal

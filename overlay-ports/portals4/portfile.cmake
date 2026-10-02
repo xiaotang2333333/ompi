@@ -21,19 +21,29 @@ vcpkg_from_github(
 # libportals always links libev; the vcpkg libev package keeps ev.h under
 # include/libev, which the bundled OMPI_CHECK_PACKAGE macro detects.
 # The hwloc and bsd-compat probes are forced off so the package never links a
-# build-host library that is not declared as a dependency.
+# build-host library that is not declared as a dependency.  KNEM is only
+# enabled through the optional "knem" feature; without it the build must not
+# probe the host for knem_io.h.
+set(PORTALS4_OPTIONS
+    --disable-dependency-tracking
+    --disable-testing
+    --disable-pmi-from-portals
+    --disable-transport-ib
+    --enable-transport-udp
+    "--with-ev=${CURRENT_INSTALLED_DIR}"
+    ac_cv_search_hwloc_topology_init=no
+    ac_cv_lib_bsd_compat_main=no
+)
+if("knem" IN_LIST FEATURES)
+    list(APPEND PORTALS4_OPTIONS "--with-knem=${CURRENT_INSTALLED_DIR}")
+else()
+    list(APPEND PORTALS4_OPTIONS --without-knem)
+endif()
 vcpkg_make_configure(
     AUTORECONF
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-        --disable-dependency-tracking
-        --disable-testing
-        --disable-pmi-from-portals
-        --disable-transport-ib
-        --enable-transport-udp
-        "--with-ev=${CURRENT_INSTALLED_DIR}"
-        ac_cv_search_hwloc_topology_init=no
-        ac_cv_lib_bsd_compat_main=no
+        ${PORTALS4_OPTIONS}
     OPTIONS_DEBUG
         "with_ev_libdir=${CURRENT_INSTALLED_DIR}/debug/lib"
     OPTIONS_RELEASE

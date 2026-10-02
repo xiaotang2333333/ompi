@@ -15,5 +15,13 @@
       "name": "vcpkg-make",
       "host": true
     }
-  ]
+  ],
+  "features": {
+    "knem": {
+      "description": "Enable KNEM support in libportals using the header-only knem port instead of probing the build host.",
+      "dependencies": [
+        "knem"
+      ]
+    }
+  }
 }

@@ -10,5 +10,13 @@
       "name": "vcpkg-make",
       "host": true
     }
-  ]
+  ],
+  "features": {
+    "ssl": {
+      "description": "Link the OrangeFS client against OpenSSL (libssl/libcrypto) from vcpkg instead of probing the build host.",
+      "dependencies": [
+        "openssl"
+      ]
+    }
+  }
 }

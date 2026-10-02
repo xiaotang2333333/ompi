@@ -11,5 +11,24 @@
       "name": "vcpkg-make",
       "host": true
     }
-  ]
+  ],
+  "features": {
+    "daxctl": {
+      "description": "Enable automatic DEVDAX and DAX KMEM recognition through libdaxctl from ndctl (requires libdaxctl 66 or newer)",
+      "supports": "linux",
+      "dependencies": [
+        "ndctl"
+      ]
+    },
+    "hwloc": {
+      "description": "Enable HMAT memory attribute support through hwloc (requires hwloc 2.3 or newer)",
+      "supports": "linux",
+      "dependencies": [
+        {
+          "name": "hwloc",
+          "version>=": "2.3"
+        }
+      ]
+    }
+  }
 }

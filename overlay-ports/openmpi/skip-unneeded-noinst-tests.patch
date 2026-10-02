@@ -1,0 +1,23 @@
+diff --git a/test/Makefile.am b/test/Makefile.am
+--- a/test/Makefile.am
++++ b/test/Makefile.am
+@@ -24,6 +24,6 @@
+ # support needs to be first for dependencies
+ SUBDIRS = support asm class threads datatype util mpool
+ if PROJECT_OMPI
+-SUBDIRS += monitoring spc part
++SUBDIRS += part
+ endif
+ DIST_SUBDIRS = event $(SUBDIRS)
+diff --git a/test/Makefile.in b/test/Makefile.in
+--- a/test/Makefile.in
++++ b/test/Makefile.in
+@@ -111,7 +111,7 @@
+ build_triplet = @build@
+ host_triplet = @host@
+ target_triplet = @target@
+-@PROJECT_OMPI_TRUE@am__append_1 = monitoring spc part
++@PROJECT_OMPI_TRUE@am__append_1 = part
+ subdir = test
+ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+ am__aclocal_m4_deps = $(top_srcdir)/config/oac/oac_assert.m4 \

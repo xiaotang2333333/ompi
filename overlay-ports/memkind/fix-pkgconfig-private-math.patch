@@ -1,0 +1,10 @@
+diff --git a/memkind.pc.in b/memkind.pc.in
+index f03c3dc..c7eb500 100644
+--- a/memkind.pc.in
++++ b/memkind.pc.in
+@@ -10,4 +10,4 @@ URL: http://memkind.github.io/memkind
+ Version: @VERSION@
+ Cflags: -I${includedir}
+ Libs: -L${libdir} -lmemkind
+-Libs.private: -ldl -lnuma -lpthread @DAXCTL_LIBS@ @HWLOC_LIBS@
++Libs.private: -ldl -lnuma -lpthread @DAXCTL_LIBS@ @HWLOC_LIBS@ -lm

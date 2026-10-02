@@ -1,0 +1,28 @@
+diff --git a/examples/Makefile.mk b/examples/Makefile.mk
+index 3df1689..2f9cbb6 100644
+--- a/examples/Makefile.mk
++++ b/examples/Makefile.mk
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: BSD-2-Clause
+ # Copyright (C) 2014 - 2020 Intel Corporation.
+ 
+-noinst_PROGRAMS += examples/autohbw_candidates \
++check_PROGRAMS += examples/autohbw_candidates \
+                    examples/filter_memkind \
+                    examples/hello_hbw \
+                    examples/hello_memkind \
+@@ -22,10 +22,10 @@ noinst_PROGRAMS += examples/autohbw_candidates \
+                    examples/pmem_usable_size \
+                    # end
+ if HAVE_CXX11
+-noinst_PROGRAMS += examples/memkind_allocated
+-noinst_PROGRAMS += examples/memkind_cpp_allocator
+-noinst_PROGRAMS += examples/pmem_cpp_allocator
+-noinst_PROGRAMS += examples/fixed_cpp_allocator
++check_PROGRAMS += examples/memkind_allocated
++check_PROGRAMS += examples/memkind_cpp_allocator
++check_PROGRAMS += examples/pmem_cpp_allocator
++check_PROGRAMS += examples/fixed_cpp_allocator
+ endif
+ 
+ examples_autohbw_candidates_LDADD = libmemkind.la

@@ -17,6 +17,17 @@ vcpkg_extract_source_archive(SOURCE_PATH ARCHIVE "${ARCHIVE}"
     PATCHES fix-out-of-tree-statecomp.patch
 )
 
+# statecomp (the build-host state machine compiler) generates the encode
+# stubs from the .sm sources with bison and flex.  The release tarball does
+# not ship parser.c/scanner.c and Makefile.in hard-codes "BISON = bison" /
+# "FLEX = flex", so acquire the host tools and pin their absolute paths.
+vcpkg_find_acquire_program(BISON)
+vcpkg_find_acquire_program(FLEX)
+string(REPLACE "\\" "/" BISON "${BISON}")
+string(REPLACE "\\" "/" FLEX "${FLEX}")
+vcpkg_replace_string("${SOURCE_PATH}/Makefile.in" "BISON = bison" "BISON = ${BISON}")
+vcpkg_replace_string("${SOURCE_PATH}/Makefile.in" "FLEX = flex" "FLEX = ${FLEX}")
+
 # The release tarball ships Makefile.in/module.mk.in but no generated
 # configure; regenerate it exactly like the upstream ./prepare script.
 vcpkg_execute_required_process(
@@ -33,12 +44,30 @@ vcpkg_execute_required_process(
 # --without-kernel: OrangeFS treats any --with-kernel/--without-kernel use as a
 # source path and aborts when it is not a configured kernel tree.
 # No MPI is used anywhere in the client build.
+set(PVFS2_OPTIONS
+    --disable-server
+    --disable-olib
+    --disable-karma
+)
+# AX_OPENSSL defaults to probing /usr, /usr/local and /opt.  Only link OpenSSL
+# when the optional "ssl" feature is selected, using the matching vcpkg
+# configuration prefix.  vcpkg-make puts the release include directory in
+# C_INCLUDE_PATH for both configurations, so the debug build can link the
+# debug libraries while compiling against the shared headers.
+if("ssl" IN_LIST FEATURES)
+    list(APPEND PVFS2_OPTIONS_DEBUG "--with-ssl=${CURRENT_INSTALLED_DIR}/debug")
+    list(APPEND PVFS2_OPTIONS_RELEASE "--with-ssl=${CURRENT_INSTALLED_DIR}")
+else()
+    list(APPEND PVFS2_OPTIONS --without-ssl)
+endif()
 vcpkg_make_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-        --disable-server
-        --disable-olib
-        --disable-karma
+        ${PVFS2_OPTIONS}
+    OPTIONS_DEBUG
+        ${PVFS2_OPTIONS_DEBUG}
+    OPTIONS_RELEASE
+        ${PVFS2_OPTIONS_RELEASE}
 )
 # 'make install' depends on the 'all' target, which also builds the server-side
 # user tools. Build only the shared client library and stage it manually.
