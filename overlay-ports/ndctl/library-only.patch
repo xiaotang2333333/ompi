@@ -1,0 +1,52 @@
+diff --git a/cxl/lib/meson.build b/cxl/lib/meson.build
+index 3f47e49..a41a5f6 100644
+--- a/cxl/lib/meson.build
++++ b/cxl/lib/meson.build
+@@ -36,3 +36,5 @@ custom_target(
+   install : true,
+   install_dir : pkgconfiglibdir,
+ )
++
++install_headers('../libcxl.h', subdir : 'cxl')
+diff --git a/daxctl/lib/meson.build b/daxctl/lib/meson.build
+index b2c7a95..641ca33 100644
+--- a/daxctl/lib/meson.build
++++ b/daxctl/lib/meson.build
+@@ -43,4 +43,4 @@ custom_target(
+   install_dir : pkgconfiglibdir,
+ )
+ 
+-install_data('daxctl.conf', install_dir : datadir / 'daxctl')
++install_headers('../libdaxctl.h', subdir : 'daxctl')
+diff --git a/meson.build b/meson.build
+index 562b9a5..d6b8288 100644
+--- a/meson.build
++++ b/meson.build
+@@ -321,17 +321,6 @@ ccan_dep = declare_dependency(link_with : ccan)
+ subdir('daxctl/lib')
+ subdir('ndctl/lib')
+ subdir('cxl/lib')
+-subdir('util')
+-subdir('ndctl')
+-subdir('daxctl')
+-subdir('cxl')
+-if get_option('docs').enabled()
+-  subdir('Documentation/ndctl')
+-  subdir('Documentation/daxctl')
+-  subdir('Documentation/cxl')
+-endif
+-subdir('test')
+-subdir('contrib')
+ 
+ # only support spec file generation from git builds
+ if version_tag == ''
+diff --git a/ndctl/lib/meson.build b/ndctl/lib/meson.build
+index 2907af7..9d16bcc 100644
+--- a/ndctl/lib/meson.build
++++ b/ndctl/lib/meson.build
+@@ -47,3 +47,5 @@ custom_target(
+   install : true,
+   install_dir : pkgconfiglibdir,
+ )
++
++install_headers(['../libndctl.h', '../ndctl.h'], subdir : 'ndctl')

@@ -1,0 +1,24 @@
+{
+  "name": "ndctl",
+  "version": "85",
+  "description": "Libraries for managing NVDIMM and CXL devices (libndctl, libdaxctl, libcxl)",
+  "homepage": "https://github.com/pmem/ndctl",
+  "license": "LGPL-2.1-only AND MIT AND CC0-1.0",
+  "supports": "linux",
+  "dependencies": [
+    "iniparser",
+    "json-c",
+    "kmod",
+    {
+      "name": "libsystemd",
+      "features": [
+        "libudev"
+      ]
+    },
+    "libuuid",
+    {
+      "name": "vcpkg-tool-meson",
+      "host": true
+    }
+  ]
+}

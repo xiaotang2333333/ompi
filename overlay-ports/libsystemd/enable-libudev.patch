@@ -1,0 +1,80 @@
+diff --git a/meson.build b/meson.build
+index e3773cf..7adda3f 100644
+--- a/meson.build
++++ b/meson.build
+@@ -2097,7 +2097,7 @@ subdir('src/libc')
+ subdir('src/fundamental')
+ subdir('src/basic')
+ subdir('src/libsystemd')
+-static_libudev='unused'
++subdir('src/libudev')
+ 
+ libsystemd = shared_library(
+         'systemd',
+@@ -2149,6 +2149,54 @@ else
+         alias_target('libsystemd', libsystemd)
+ endif
+ 
++libudev = shared_library(
++        'udev',
++        version : libudev_version,
++        include_directories : includes,
++        implicit_include_directories : false,
++        link_args : ['-shared',
++                     '-Wl,--version-script=' + libudev_sym_path],
++        link_with : [libsystemd_static],
++        link_whole : libudev_basic,
++        dependencies : [threads,
++                        userspace],
++        link_depends : libudev_sym,
++        build_by_default : static_libudev == 'false',
++        install : static_libudev == 'false',
++        install_tag: 'libudev',
++        install_dir : libdir)
++
++if static_libudev != 'false'
++        install_libudev_static = static_library(
++                'udev',
++                libc_wrapper_sources,
++                basic_sources,
++                fundamental_sources,
++                libsystemd_sources,
++                libudev_sources,
++                include_directories : includes,
++                implicit_include_directories : false,
++                install : true,
++                install_tag: 'libudev',
++                install_dir : libdir,
++                link_depends : libudev_sym,
++                dependencies : [libdl,
++                                libgcrypt_cflags,
++                                liblz4_cflags,
++                                libm,
++                                librt,
++                                libxz_cflags,
++                                libzstd_cflags,
++                                threads,
++                                userspace],
++                c_args : static_libudev_pic ? [] : ['-fno-PIC'],
++                pic : static_libudev_pic)
++
++        alias_target('libudev', libudev, install_libudev_static)
++else
++        alias_target('libudev', libudev)
++endif
++
+ if false
+ 
+ libudev = shared_library(
+diff --git a/src/libudev/libudev.pc.in b/src/libudev/libudev.pc.in
+index 6541bcb..63edd1e 100644
+--- a/src/libudev/libudev.pc.in
++++ b/src/libudev/libudev.pc.in
+@@ -16,5 +16,6 @@ Name: libudev
+ Description: Library to access udev device information
+ Version: {{PROJECT_VERSION}}
+ Libs: -L${libdir} -ludev
+-Libs.private: -lrt -pthread
++Libs.private: {{PC_DL}} {{PC_M}} {{PC_RT}} -pthread
++Requires.private: liblz4 liblzma libzstd
+ Cflags: -I${includedir}

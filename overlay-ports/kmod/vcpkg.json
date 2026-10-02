@@ -1,0 +1,40 @@
+{
+  "name": "kmod",
+  "version": "34.2",
+  "description": "Library to load and manage kernel modules",
+  "homepage": "https://github.com/kmod-project/kmod",
+  "license": "LGPL-2.1-or-later",
+  "supports": "linux",
+  "dependencies": [
+    {
+      "name": "vcpkg-tool-meson",
+      "host": true
+    }
+  ],
+  "features": {
+    "openssl": {
+      "description": "Support PKCS#7 module signature verification",
+      "dependencies": [
+        "openssl"
+      ]
+    },
+    "xz": {
+      "description": "Support xz-compressed kernel modules",
+      "dependencies": [
+        "liblzma"
+      ]
+    },
+    "zlib": {
+      "description": "Support gzip-compressed kernel modules",
+      "dependencies": [
+        "zlib"
+      ]
+    },
+    "zstd": {
+      "description": "Support zstd-compressed kernel modules",
+      "dependencies": [
+        "zstd"
+      ]
+    }
+  }
+}

@@ -1,0 +1,33 @@
+diff --git a/cxl/lib/libcxl.pc.in b/cxl/lib/libcxl.pc.in
+index 949fcdc..fed7233 100644
+--- a/cxl/lib/libcxl.pc.in
++++ b/cxl/lib/libcxl.pc.in
+@@ -7,5 +7,6 @@ Name: libcxl
+ Description: Manage CXL devices
+ Version: @VERSION@
+ Libs: -L${libdir} -lcxl
++Requires.private: libdaxctl uuid libkmod libudev
+ Libs.private:
+ Cflags: -I${includedir}
+diff --git a/daxctl/lib/libdaxctl.pc.in b/daxctl/lib/libdaxctl.pc.in
+index 1aced1a..b79f829 100644
+--- a/daxctl/lib/libdaxctl.pc.in
++++ b/daxctl/lib/libdaxctl.pc.in
+@@ -7,5 +7,6 @@ Name: libdaxctl
+ Description: Manage "Device DAX" devices
+ Version: @VERSION@
+ Libs: -L${libdir} -ldaxctl
++Requires.private: uuid libkmod
+ Libs.private:
+ Cflags: -I${includedir}
+diff --git a/ndctl/lib/libndctl.pc.in b/ndctl/lib/libndctl.pc.in
+index 2af9ad1..0b75c36 100644
+--- a/ndctl/lib/libndctl.pc.in
++++ b/ndctl/lib/libndctl.pc.in
+@@ -7,5 +7,6 @@ Name: libndctl
+ Description: Manage "libnvdimm" subsystem devices (Non-volatile Memory)
+ Version: @VERSION@
+ Libs: -L${libdir} -lndctl
++Requires.private: libdaxctl uuid libkmod libudev
+ Libs.private:
+ Cflags: -I${includedir}
