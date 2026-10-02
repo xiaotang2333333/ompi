@@ -29,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        triplet: [x64-linux, x64-linux-dynamic]
+        triplet: [x64-linux, x64-linux-dynamic, arm64-linux, arm64-linux-dynamic]
     defaults:
       run:
         shell: bash
@@ -43,6 +43,10 @@ jobs:
             build-essential cmake ninja-build pkg-config \
             autoconf automake libtool libtool-bin m4 zip unzip tar git
 
+      - name: Install AArch64 cross toolchain
+        if: startsWith(matrix.triplet, 'arm64-')
+        run: sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
       - name: Bootstrap pinned vcpkg
         run: |
           git clone --filter=blob:none --no-checkout https://github.com/microsoft/vcpkg.git vcpkg
@@ -53,6 +57,7 @@ jobs:
         run: |
           ./vcpkg/vcpkg install "argobots:${{ matrix.triplet }}" \
             --classic --overlay-ports="$GITHUB_WORKSPACE/overlay-ports" \
+            --host-triplet=x64-linux \
             --x-install-root="$GITHUB_WORKSPACE/installed"
 
       - name: Verify installed artifacts and consumers
@@ -63,6 +68,12 @@ jobs:
           root="$GITHUB_WORKSPACE/installed/$TRIPLET"
           test -f "$root/include/abt.h"
           test -s "$root/share/argobots/copyright"
+          compiler=cc
+          cross=false
+          if [[ "$TRIPLET" == arm64-* ]]; then
+            compiler=aarch64-linux-gnu-gcc
+            cross=true
+          fi
           for config in release debug; do
             libdir="$root/lib"
             if [[ "$config" == debug ]]; then
@@ -71,23 +82,32 @@ jobs:
             export PKG_CONFIG_LIBDIR="$libdir/pkgconfig"
             unset PKG_CONFIG_PATH
             pkg-config --modversion argobots
-            if [[ "$TRIPLET" == x64-linux ]]; then
-              test -f "$libdir/libabt.a"
+            if [[ "$TRIPLET" == *-dynamic ]]; then
+              library="$libdir/libabt.so"
             else
-              test -f "$libdir/libabt.so"
+              library="$libdir/libabt.a"
             fi
+            test -f "$library"
             for integration in pkgconfig direct; do
               binary="$RUNNER_TEMP/argobots-$config-$integration"
               if [[ "$integration" == pkgconfig ]]; then
-                cc -std=c11 .github/tests/argobots-smoke.c \
+                "$compiler" -std=c11 .github/tests/argobots-smoke.c \
                   $(pkg-config --cflags --libs --static argobots) \
                   -Wl,-rpath,"$libdir" -o "$binary"
               else
-                cc -std=c11 .github/tests/argobots-smoke.c \
+                "$compiler" -std=c11 .github/tests/argobots-smoke.c \
                   -I"$root/include" -L"$libdir" -labt -pthread -ldl -lrt \
                   -Wl,-rpath,"$libdir" -o "$binary"
               fi
-              timeout 30s "$binary"
+              if [[ "$cross" == true ]]; then
+                for artifact in "$library" "$binary"; do
+                  readelf -h "$artifact" > "$RUNNER_TEMP/argobots-elf-headers.txt"
+                  awk '$1 == "Machine:" { count++; if ($2 != "AArch64") bad = 1 }
+                       END { exit (!count || bad) }' "$RUNNER_TEMP/argobots-elf-headers.txt"
+                done
+              else
+                timeout 30s "$binary"
+              fi
             done
           done
           test ! -d "$root/debug/include"
