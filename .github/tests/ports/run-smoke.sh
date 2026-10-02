@@ -36,13 +36,26 @@ case "$PORT" in
   portals4) libraries=(-lportals -lev -pthread -ldl -lrt -lm) ;;
   pvfs2) libraries=(-lpvfs2 -pthread -ldl -lrt -lm) ;;
   psm2) modules=(libpsm2); libraries=(-lpsm2 -lnuma -pthread -ldl -lrt) ;;
-  rdma-core) modules=(libibverbs librdmacm); libraries=(-libverbs -lrdmacm -lnl-route-3 -lnl-3 -pthread -ldl) ;;
-  kmod) modules=(libkmod); libraries=(-lkmod) ;;
-  ndctl) modules=(libndctl libdaxctl); libraries=(-lndctl -ldaxctl -ludev -lkmod -luuid -llzma -llz4 -lzstd -lcap -lmount -lcrypt -pthread -ldl -lm -lrt) ;;
+  rdma-core) modules=(librdmacm libibverbs); libraries=(-lrdmacm -libverbs -lnl-route-3 -lnl-3 -pthread -ldl) ;;
+  kmod)
+    modules=(libkmod)
+    libraries=(-lkmod -pthread -ldl)
+    for feature in openssl xz zlib zstd; do
+      if [[ ",${FEATURES:-}," == *",$feature,"* ]]; then
+        case "$feature" in
+          openssl) libraries+=(-lcrypto) ;;
+          xz) libraries+=(-llzma) ;;
+          zlib) libraries+=(-lz) ;;
+          zstd) libraries+=(-lzstd) ;;
+        esac
+      fi
+    done
+    ;;
+  ndctl) modules=(libndctl libdaxctl); libraries=(-lndctl -ldaxctl -ludev -lkmod -luuid -llzma -llz4 -lzstd -pthread -ldl -lm -lrt) ;;
   libsystemd)
     source_file="$GITHUB_WORKSPACE/.github/tests/ports/libudev.c"
     modules=(libudev)
-    libraries=(-ludev -llzma -llz4 -lzstd -lcap -lmount -lcrypt -pthread -ldl -lm -lrt)
+    libraries=(-ludev -llzma -llz4 -lzstd -pthread -ldl -lm -lrt)
     ;;
   xpmem) modules=(cray-xpmem); libraries=(-lxpmem -pthread) ;;
   openmpi) modules=(ompi-c); libraries=(-lmpi) ;;
@@ -104,6 +117,8 @@ for config in "${configs[@]}"; do
     if [[ "$cross" == true ]]; then
       verify_arm64 "$binary"
       echo "ARM64 consumer compiled and linked; execution requires an ARM64 runner"
+    elif [[ "${COMPILE_ONLY:-false}" == true ]]; then
+      echo "Hardware-dependent profile compiled and linked; runtime requires its kernel driver"
     else
       timeout 60s "$binary"
     fi
