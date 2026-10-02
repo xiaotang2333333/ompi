@@ -15,5 +15,32 @@
       "name": "vcpkg-make",
       "host": true
     }
-  ]
+  ],
+  "features": {
+    "cuda": {
+      "description": "Enable CUDA support. Validated against the installed toolkit (>= 12.2, cuda.h, cuda_runtime.h, nvml.h, libcuda, libcudart, libnvidia-ml).",
+      "supports": "linux & (x64 | arm64)",
+      "dependencies": [
+        "cuda"
+      ]
+    },
+    "knem": {
+      "description": "Enable KNEM support using the header-only knem port.",
+      "dependencies": [
+        "knem"
+      ]
+    },
+    "valgrind": {
+      "description": "Enable Valgrind client-request annotations using the header-only valgrind port.",
+      "dependencies": [
+        "valgrind"
+      ]
+    },
+    "xpmem": {
+      "description": "Enable XPMEM support using the xpmem port.",
+      "dependencies": [
+        "xpmem"
+      ]
+    }
+  }
 }

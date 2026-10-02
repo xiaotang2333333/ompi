@@ -15,5 +15,55 @@
       "name": "vcpkg-make",
       "host": true
     }
-  ]
+  ],
+  "features": {
+    "cuda": {
+      "description": "Enable CUDA transports (TL CUDA, MC CUDA, EC CUDA) using the installed CUDA Toolkit found by the cuda port (requires CUDA >= 11.0 with nvcc and NVML)",
+      "supports": "linux & (x64 | arm64)",
+      "dependencies": [
+        "cuda"
+      ]
+    },
+    "ibverbs": {
+      "description": "Enable libibverbs-based transport support (requires the rdma-core runtime and RDMA hardware)",
+      "supports": "linux",
+      "dependencies": [
+        "rdma-core"
+      ]
+    },
+    "nccl": {
+      "description": "Enable the NCCL transport using the system NCCL found by the nccl port (requires CUDA >= 11.0 and an installed NCCL)",
+      "supports": "linux & x64",
+      "dependencies": [
+        "nccl",
+        {
+          "name": "ucc",
+          "default-features": false,
+          "features": [
+            "cuda"
+          ]
+        }
+      ]
+    },
+    "nvls": {
+      "description": "Compile the NVLink SHARP (NVLS) TL CUDA algorithms (requires CUDA >= 12.0 at build time; runtime needs NVSwitch datacenter hardware with multicast support)",
+      "supports": "linux & (x64 | arm64)",
+      "dependencies": [
+        {
+          "name": "ucc",
+          "default-features": false,
+          "features": [
+            "cuda"
+          ]
+        }
+      ]
+    },
+    "rdmacm": {
+      "description": "Enable librdmacm connection-manager support (requires the rdma-core runtime)",
+      "supports": "linux",
+      "dependencies": [
+        "rdma-core"
+      ]
+    }
+  }
 }

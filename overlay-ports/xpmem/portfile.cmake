@@ -4,6 +4,10 @@ vcpkg_from_github(
     REF "v${VERSION}"
     SHA512 d6b2152609ca84b92ea9ada6b591c8fa7706b48695959e578dc316079e9d178c65f86ce47fb44c8677ae812fecc20ba604d8819371ca10acd5d805bf310510dd
     HEAD_REF master
+    PATCHES
+        # test/share builds noinst xpmem_proc1/xpmem_proc2/xpmem_master during
+        # "make all"; --disable-gtest only covers test/gtest.
+        skip-test-share.patch
 )
 
 vcpkg_make_configure(

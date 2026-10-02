@@ -1,0 +1,21 @@
+diff --git a/config/m4/nccl.m4 b/config/m4/nccl.m4
+--- a/config/m4/nccl.m4
++++ b/config/m4/nccl.m4
+@@ -23,7 +23,7 @@ AS_IF([test "x$nccl_checked" != "xyes"],[
+                   [AC_MSG_ERROR([Provided "--with-nccl=${with_nccl}" location does not exist])], [])
+             check_nccl_dir="$with_nccl"
+             check_nccl_libdir="$with_nccl/lib"
+-            CPPFLAGS="-I$with_nccl/include $save_CPPFLAGS"
++            CPPFLAGS="-I${with_nccl_incdir:-$with_nccl/include} $save_CPPFLAGS"
+             LDFLAGS="-L$check_nccl_libdir $save_LDFLAGS"
+         ])
+ 
+@@ -61,7 +61,7 @@ AS_IF([test "x$nccl_checked" != "xyes"],[
+             AS_IF([test "x$check_nccl_dir" != "x"],
+             [
+                 AC_MSG_RESULT([NCCL dir: $check_nccl_dir])
+-                AC_SUBST(NCCL_CPPFLAGS, "-I$check_nccl_dir/include/")
++                AC_SUBST(NCCL_CPPFLAGS, "-I${with_nccl_incdir:-$check_nccl_dir/include}/")
+             ])
+ 
+             AS_IF([test "x$check_nccl_libdir" != "x"],

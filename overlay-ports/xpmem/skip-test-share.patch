@@ -1,0 +1,9 @@
+diff --git a/test/Makefile.am b/test/Makefile.am
+--- a/test/Makefile.am
++++ b/test/Makefile.am
+@@ -4,4 +4,4 @@
+ # See file LICENSE for terms.
+ #
+ 
+-SUBDIRS = share gtest
++SUBDIRS = gtest

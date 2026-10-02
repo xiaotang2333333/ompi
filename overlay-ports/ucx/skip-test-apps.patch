@@ -1,0 +1,11 @@
+diff --git a/test/apps/Makefile.in b/test/apps/Makefile.in
+--- a/test/apps/Makefile.in
++++ b/test/apps/Makefile.in
+@@ -704,6 +704,6 @@
+ top_top_srcdir = @top_top_srcdir@
+ ucx_config_dir = @ucx_config_dir@
+-SUBDIRS = profiling iodemo
++SUBDIRS =
+ @HAVE_TEST_APPS_TRUE@noinst_LTLIBRARIES = libtest_ucx_isolation_plugin.la
+ @HAVE_TEST_APPS_TRUE@objdir_apps = $(shell sed -n -e 's/^objdir=\(.*\)$$/\1/p' $(LIBTOOL))
+ @HAVE_TEST_APPS_TRUE@libtest_ucx_isolation_plugin_la_SOURCES = test_ucx_isolation_plugin.c

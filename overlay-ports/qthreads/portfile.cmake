@@ -9,6 +9,39 @@ vcpkg_extract_source_archive(
     ARCHIVE "${ARCHIVE}"
 )
 
+# qthreads 1.21 advertises --with-topology=hwloc_v2, but the release tarball
+# ships no src/affinity/hwloc_v2.c (it is only listed in EXTRA_DIST) and
+# configure.ac runs QTHREAD_CHECK_HWLOC for "hwloc", not "hwloc_v2".  The
+# shipped src/affinity/hwloc.c is API-version neutral: it uses hwloc_bitmap_*
+# for HWLOC_API_VERSION != 0x00010000 (i.e. hwloc 2.x such as the registry's
+# 2.11.2) and falls back to the hwloc 1.x cpuset API otherwise.  The missing
+# deprecated distance symbol it probes for makes the configure distance check
+# fail gracefully on hwloc 2.x, which selects the shep_dists fallback.
+#
+# QTHREAD_CHECK_HWLOC only accepts a single --with-hwloc=PREFIX and hard-codes
+# -L$with_hwloc/lib.  Split the library directory into with_hwloc_libdir so
+# Debug builds can link the debug hwloc while the headers stay
+# configuration-independent.  This port does not run AUTORECONF and the mtime
+# refresh below suppresses regeneration, so the shipped generated configure
+# script must receive the same replacement as the m4 source.
+vcpkg_replace_string("${SOURCE_PATH}/config/qthread_check_hwloc.m4"
+    "AS_IF([test \"x$with_hwloc\" != x],"
+    "AS_IF([test \"x$with_hwloc_libdir\" = x], [with_hwloc_libdir=\"$with_hwloc/lib\"])
+  AS_IF([test \"x$with_hwloc\" != x],")
+vcpkg_replace_string("${SOURCE_PATH}/config/qthread_check_hwloc.m4"
+    "-L$with_hwloc/lib" "-L$with_hwloc_libdir")
+vcpkg_replace_string("${SOURCE_PATH}/configure"
+    "  hwloc_saved_LDFLAGS=\"$LDFLAGS\"
+  if test \"x$with_hwloc\" != x"
+    "  hwloc_saved_LDFLAGS=\"$LDFLAGS\"
+  if test \"x$with_hwloc_libdir\" = x
+then :
+  with_hwloc_libdir=\"$with_hwloc/lib\"
+fi
+  if test \"x$with_hwloc\" != x")
+vcpkg_replace_string("${SOURCE_PATH}/configure"
+    "LDFLAGS=\"-L$with_hwloc/lib $LDFLAGS\"" "LDFLAGS=\"-L$with_hwloc_libdir $LDFLAGS\"")
+
 # The 1.21 release tarball was assembled with automake 1.17 and ships
 # aclocal.m4/Makefile.in that are older than the bundled config/*.m4 files.
 # Make would then try to regenerate them, which fails on hosts that only
@@ -30,12 +63,39 @@ if(qthreads_generated_files)
     file(TOUCH ${qthreads_generated_files})
 endif()
 
+vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        hwloc QTHREADS_HWLOC
+)
+
+# Default stays "no": configure.ac probes hwloc whenever the topology is left
+# to guess, which would link whatever the build host happens to provide.
+set(QTHREADS_OPTIONS "")
+set(QTHREADS_DEBUG_OPTIONS "")
+set(QTHREADS_RELEASE_OPTIONS "")
+if(QTHREADS_HWLOC)
+    list(APPEND QTHREADS_OPTIONS
+        --with-topology=hwloc
+        "--with-hwloc=${CURRENT_INSTALLED_DIR}"
+    )
+    list(APPEND QTHREADS_DEBUG_OPTIONS
+        "with_hwloc_libdir=${CURRENT_INSTALLED_DIR}/debug/lib"
+    )
+    list(APPEND QTHREADS_RELEASE_OPTIONS
+        "with_hwloc_libdir=${CURRENT_INSTALLED_DIR}/lib"
+    )
+else()
+    list(APPEND QTHREADS_OPTIONS --with-topology=no)
+endif()
+
 vcpkg_make_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-        # qthreads otherwise autodetects hwloc on the build machine. Consumers
-        # only need the qthread library and headers.
-        --with-topology=no
+        ${QTHREADS_OPTIONS}
+    OPTIONS_DEBUG
+        ${QTHREADS_DEBUG_OPTIONS}
+    OPTIONS_RELEASE
+        ${QTHREADS_RELEASE_OPTIONS}
 )
 vcpkg_make_install()
 vcpkg_fixup_pkgconfig()

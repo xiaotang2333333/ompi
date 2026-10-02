@@ -10,5 +10,14 @@
       "name": "vcpkg-make",
       "host": true
     }
-  ]
+  ],
+  "features": {
+    "hwloc": {
+      "description": "Use hwloc for topology and affinity discovery instead of the no-op topology backend",
+      "supports": "linux",
+      "dependencies": [
+        "hwloc"
+      ]
+    }
+  }
 }
