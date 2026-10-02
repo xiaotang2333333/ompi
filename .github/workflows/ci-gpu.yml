@@ -1,0 +1,238 @@
+name: GPU overlay ports compile-only CI
+
+# Compile-only CI for the GPU profiles of the overlay ports:
+#   ucx[cuda]            UCX CUDA transports against a provisioned toolkit
+#   ucc[cuda,nccl,nvls]  UCC CUDA/NCCL/NVLS transports against toolkit + NCCL
+#
+# The NVIDIA SDK is provisioned from the official NVIDIA CUDA APT repository
+# for ubuntu2404/x86_64. The cuda-keyring package is pinned by SHA256 and every
+# directly installed package is pinned to an exact version that was verified to
+# exist in that repository's Packages index. Only userspace components are
+# installed: compiler (nvcc), CUDA runtime, driver/NVML development stubs and
+# NCCL user libraries. No NVIDIA kernel driver, no physical GPU and no target
+# execution: verification compiles and links the installed C consumers in
+# .github/tests/ports/{ucx,ucc}.c and never runs them or any GPU code.
+#
+# The registered vcpkg cuda/nccl ports are verifier ports (minimum floors, no
+# pinned downloads): cuda requires CUDA >= 10.1 with nvcc; ucx[cuda] itself
+# enforces CUDA >= 12.2 (NVCC_CUDA_MIN_REQUIRED) and nvcc, cuda.h,
+# cuda_runtime.h, nvml.h, libcuda, libcudart, libnvidia-ml; nccl requires
+# nccl.h + libnccl via FindNCCL >= 2.4.6.1. This profile therefore provisions
+# CUDA 12.8 (supports the sm_90/sm_100 gencodes UCC NVLS needs) and a modern
+# NCCL built against CUDA 12.8.
+#
+# Linux x64 native only. CUDA/NCCL cross-compilation for arm64 is out of scope:
+# nccl supports linux & x64, and no arm64 toolkit/NCCL provisioning is done.
+
+on:
+  push:
+    branches: [ci-gpu]
+    paths:
+      - overlay-ports/**
+      - .github/workflows/ci-gpu.yml
+      - .github/tests/ports/run-gpu-compile.sh
+      - .github/tests/ports/ucx.c
+      - .github/tests/ports/ucc.c
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gpu-compile-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VCPKG_COMMIT: 3aea538b2bb21a586502c67b00eb474fdd2e3098
+  VCPKG_DISABLE_METRICS: "1"
+  VCPKG_BINARY_SOURCES: clear
+  # NVIDIA CUDA apt repository for Ubuntu 24.04 x86_64.
+  CUDA_REPO_URL: https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64
+  CUDA_KEYRING_SHA256: d2a6b11c096396d868758b86dab1823b25e14d70333f1dfa74da5ddaf6a06dba
+  CUDA_ROOT: /usr/local/cuda-12.8
+  # Exact package versions verified in the ubuntu2404/x86_64 Packages index.
+  # cuda-nvcc-12-8=12.8.93-1 pulls cuda-nvvm-12-8/cuda-crt-12-8 at exactly
+  # 12.8.93-1; cuda-cudart-dev-12-8 requires cuda-cudart-12-8 >= 12.8.90,
+  # cuda-cccl-12-8 and cuda-driver-dev-12-8 >= 12.8.90. libnccl-dev 2.26.2 is
+  # the current NCCL build for CUDA 12.8 (well above the 2.4.6.1 floor).
+  CUDA_NVCC_SPEC: cuda-nvcc-12-8=12.8.93-1
+  CUDA_CUDART_SPEC: cuda-cudart-12-8=12.8.90-1
+  CUDA_CUDART_DEV_SPEC: cuda-cudart-dev-12-8=12.8.90-1
+  CUDA_CCCL_SPEC: cuda-cccl-12-8=12.8.90-1
+  CUDA_DRIVER_DEV_SPEC: cuda-driver-dev-12-8=12.8.90-1
+  CUDA_NVML_DEV_SPEC: cuda-nvml-dev-12-8=12.8.90-1
+  CUDA_CONFIG_COMMON_SPEC: cuda-toolkit-12-config-common=12.8.90-1
+  CUDA_12_8_CONFIG_COMMON_SPEC: cuda-toolkit-12-8-config-common=12.8.90-1
+  NCCL2_SPEC: libnccl2=2.26.2-1+cuda12.8
+  NCCL_DEV_SPEC: libnccl-dev=2.26.2-1+cuda12.8
+
+jobs:
+  compile:
+    name: ${{ matrix.port }}[${{ matrix.features }}] / ${{ matrix.triplet }} (debug+release)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {port: ucx, features: "cuda", triplet: x64-linux-dynamic}
+          - {port: ucc, features: "cuda,nccl,nvls", triplet: x64-linux-dynamic}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          df -h /
+
+      - name: Install build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config \
+            autoconf autoconf-archive automake libtool libtool-bin m4 \
+            gettext bison flex perl python3 zip unzip tar git curl ca-certificates
+
+      - name: Provision NVIDIA CUDA and NCCL userspace SDK
+        run: |
+          set -euo pipefail
+          keyring="$RUNNER_TEMP/cuda-keyring_1.1-1_all.deb"
+          curl --fail --location --silent --show-error \
+            --output "$keyring" \
+            "$CUDA_REPO_URL/cuda-keyring_1.1-1_all.deb"
+          echo "$CUDA_KEYRING_SHA256  $keyring" | sha256sum --check --strict
+          sudo dpkg --install "$keyring"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            "$CUDA_NVCC_SPEC" "$CUDA_CUDART_SPEC" "$CUDA_CUDART_DEV_SPEC" \
+            "$CUDA_CCCL_SPEC" "$CUDA_DRIVER_DEV_SPEC" "$CUDA_NVML_DEV_SPEC" \
+            "$CUDA_CONFIG_COMMON_SPEC" "$CUDA_12_8_CONFIG_COMMON_SPEC" \
+            "$NCCL2_SPEC" "$NCCL_DEV_SPEC"
+          # Userspace-only guarantee: no NVIDIA kernel driver package may be
+          # present (nothing here depends on one, but assert it explicitly).
+          if dpkg -l | awk '$1 == "ii" && $2 ~ /^(nvidia-driver|nvidia-dkms|nvidia-kernel|nvidia-open|linux-modules-nvidia)/ { print $2; found = 1 } END { exit !found }'; then
+            echo "::error::a NVIDIA kernel driver package was installed"
+            exit 1
+          fi
+
+      - name: Configure CUDA environment and stub SONAME links
+        run: |
+          set -euo pipefail
+          cuda_lib="$CUDA_ROOT/targets/x86_64-linux/lib"
+          test -d "$cuda_lib/stubs"
+          # No kernel driver: libcuda/libnvidia-ml exist only as development
+          # stubs. Expose their linker and SONAME names next to the toolkit
+          # libraries so configure probes, consumer links and NEEDED entries
+          # (libcuda.so.1, libnvidia-ml.so.1) resolve deterministically.
+          for name in libcuda.so libcuda.so.1; do
+            if [ ! -e "$cuda_lib/$name" ] && [ ! -L "$cuda_lib/$name" ]; then
+              sudo ln -s "stubs/libcuda.so" "$cuda_lib/$name"
+            fi
+          done
+          for name in libnvidia-ml.so libnvidia-ml.so.1; do
+            if [ ! -e "$cuda_lib/$name" ] && [ ! -L "$cuda_lib/$name" ]; then
+              sudo ln -s "stubs/libnvidia-ml.so" "$cuda_lib/$name"
+            fi
+          done
+          sudo ldconfig
+          {
+            echo "CUDA_PATH=$CUDA_ROOT"
+            echo "CUDA_HOME=$CUDA_ROOT"
+            echo "LD_LIBRARY_PATH=$cuda_lib:$cuda_lib/stubs"
+          } >> "$GITHUB_ENV"
+          echo "$CUDA_ROOT/bin" >> "$GITHUB_PATH"
+
+      - name: Verify provisioned SDK (actual nvcc and NCCL headers)
+        run: |
+          set -euo pipefail
+          nvcc --version
+          cuda_version=$(nvcc --version | sed -nE 's/.*release ([0-9]+\.[0-9]+).*/\1/p' | head -n1)
+          test -n "$cuda_version"
+          cuda_major=${cuda_version%%.*}
+          cuda_minor=${cuda_version##*.}
+          test "$cuda_major" -eq 12
+          test "$cuda_minor" -ge 2
+          cuda_inc="$CUDA_ROOT/targets/x86_64-linux/include"
+          for header in cuda.h cuda_runtime.h nvml.h; do
+            test -f "$cuda_inc/$header" \
+              || { echo "::error::$cuda_inc/$header is missing"; exit 1; }
+          done
+          cuda_lib="$CUDA_ROOT/targets/x86_64-linux/lib"
+          for lib in libcudart.so libcudart.so.12 stubs/libcuda.so \
+                     stubs/libnvidia-ml.so libcuda.so.1 libnvidia-ml.so.1; do
+            test -e "$cuda_lib/$lib" \
+              || { echo "::error::$cuda_lib/$lib is missing"; exit 1; }
+          done
+          ldconfig -p | grep -E 'lib(cuda|nvidia-ml|cudart|nccl)\.so' || true
+          # UCC NVLS needs device code for sm_90/sm_100 (config/m4/nvls.m4),
+          # compiled here with the same gencode form UCC uses.
+          printf '__global__ void gpu_compile_probe(void) {}\n' > "$RUNNER_TEMP/gpu-compile-probe.cu"
+          nvcc -gencode=arch=compute_90,code=sm_90 \
+               -gencode=arch=compute_100,code=sm_100 \
+               -c "$RUNNER_TEMP/gpu-compile-probe.cu" -o "$RUNNER_TEMP/gpu-compile-probe.o"
+          test -s "$RUNNER_TEMP/gpu-compile-probe.o"
+          # NCCL floor from the registered nccl verifier port (2.4.6.1).
+          test -f /usr/include/nccl.h
+          test -e /usr/lib/x86_64-linux-gnu/libnccl.so
+          test -e /usr/lib/x86_64-linux-gnu/libnccl.so.2
+          nccl_version=$(sed -nE 's/^#define NCCL_(MAJOR|MINOR|PATCH)[[:space:]]+([0-9]+).*/\2/p' /usr/include/nccl.h | paste -sd.)
+          test -n "$nccl_version"
+          lowest=$(printf '%s\n%s\n' 2.4.6.1 "$nccl_version" | sort -V | head -n1)
+          test "$lowest" = "2.4.6.1"
+          echo "Provisioned nvcc $cuda_version and NCCL $nccl_version (userspace only, no GPU)"
+
+      - name: Bootstrap pinned vcpkg
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/microsoft/vcpkg.git vcpkg
+          git -C vcpkg checkout "$VCPKG_COMMIT"
+          ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
+      - name: Build only selected port and its dependencies
+        env:
+          PORT: ${{ matrix.port }}
+          TRIPLET: ${{ matrix.triplet }}
+          FEATURES: ${{ matrix.features }}
+        run: |
+          spec="$PORT"
+          if [[ -n "$FEATURES" ]]; then
+            spec="$PORT[$FEATURES]"
+          fi
+          ./vcpkg/vcpkg install "$spec:$TRIPLET" --classic \
+            --host-triplet=x64-linux \
+            --overlay-ports="$GITHUB_WORKSPACE/overlay-ports" \
+            --x-install-root="$GITHUB_WORKSPACE/installed"
+
+      - name: Compile and link installed consumers (no execution)
+        env:
+          PORT: ${{ matrix.port }}
+          TRIPLET: ${{ matrix.triplet }}
+          FEATURES: ${{ matrix.features }}
+        run: bash .github/tests/ports/run-gpu-compile.sh
+
+      - name: Surface provisioning/build failure cause
+        if: failure()
+        run: |
+          set +e
+          msg=$(
+            grep -rhoiE "CUDA support is requested but cuda packages cannot be found|NCCL support is requested but NCCL packages cannot be found|NVLS support is requested|Could not find CUDA|error: building [^ ]+ failed with: [A-Z_]+" vcpkg/buildtrees 2>/dev/null | sort -u | head -6
+          )
+          echo "--- failure summary for ${{ matrix.port }} ---"
+          echo "$msg"
+          msg=${msg//'%'/'%25'}
+          msg=${msg//$'\r'/}
+          msg=${msg//$'\n'/':'}
+          echo "::error::${msg:0:900}"
+
+      - name: Upload diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.port }}-${{ matrix.triplet }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            vcpkg/buildtrees/**/*.log
+            installed/vcpkg/status
