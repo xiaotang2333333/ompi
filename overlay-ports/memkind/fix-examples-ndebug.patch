@@ -1,0 +1,24 @@
+diff --git a/examples/memkind_cpp_allocator.cpp b/examples/memkind_cpp_allocator.cpp
+index 8bba976..7a3c583 100644
+--- a/examples/memkind_cpp_allocator.cpp
++++ b/examples/memkind_cpp_allocator.cpp
+@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
+ 
+         for (auto &el : fwlist) {
+             i--;
++            (void)el;
+             assert(el == i);
+         }
+ 
+diff --git a/examples/fixed_cpp_allocator.cpp b/examples/fixed_cpp_allocator.cpp
+index d4e6412..7190518 100644
+--- a/examples/fixed_cpp_allocator.cpp
++++ b/examples/fixed_cpp_allocator.cpp
+@@ -43,6 +43,7 @@ int main(int argc, char *argv[])
+ 
+         for (auto &el : fwlist) {
+             i--;
++            (void)el;
+             assert(el == i);
+         }
+ 

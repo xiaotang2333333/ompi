@@ -14,6 +14,28 @@ vcpkg_extract_source_archive(
     PATCHES fix-optional-packages.patch
 )
 
+# The release tarball ships pre-generated aclocal.m4/Makefile.in/configure
+# files that are older than the m4 files patched above.  Make would then try
+# to regenerate them, but a release tarball cannot be regenerated: AC_INIT
+# probes the version through config/opal_get_version.sh, which only exists in
+# git checkouts.  Refresh the timestamps of the shipped generated files
+# (including the embedded PMIx/PRRTE/ROMIO copies), keeping aclocal.m4 older
+# than the files generated from it.
+file(GLOB_RECURSE openmpi_generated_aclocal LIST_DIRECTORIES false
+    "${SOURCE_PATH}/*aclocal.m4"
+)
+file(GLOB_RECURSE openmpi_generated_files LIST_DIRECTORIES false
+    "${SOURCE_PATH}/*Makefile.in"
+    "${SOURCE_PATH}/*config.h.in"
+    "${SOURCE_PATH}/*configure"
+)
+if(openmpi_generated_aclocal)
+    file(TOUCH ${openmpi_generated_aclocal})
+endif()
+if(openmpi_generated_files)
+    file(TOUCH ${openmpi_generated_files})
+endif()
+
 vcpkg_find_acquire_program(PERL)
 cmake_path(GET PERL PARENT_PATH PERL_PATH)
 vcpkg_add_to_path("${PERL_PATH}")

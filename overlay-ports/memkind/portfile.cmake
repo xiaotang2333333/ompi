@@ -6,6 +6,7 @@ vcpkg_from_github(
     HEAD_REF master
     PATCHES
         fix-disable-static.patch
+        fix-examples-ndebug.patch
 )
 
 # memkind vendors and builds a private jemalloc (symbol prefix jemk_) from its

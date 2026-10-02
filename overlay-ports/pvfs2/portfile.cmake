@@ -6,7 +6,16 @@ vcpkg_download_distfile(ARCHIVE
     SHA512 c60c9ae20b9983bb192d7d9f05b59e031b1ee098d98c760a1f01db7e33a98b1d22fb876889d07f6e6e3e500f1b95b4b0378a4fd2f024220c2366d5c7f96e4b2b
 )
 
-vcpkg_extract_source_archive(SOURCE_PATH ARCHIVE "${ARCHIVE}")
+# statecomp (the build-host state machine compiler) is compiled with
+# BUILD_CFLAGS, which only adds the source tree.  pvfs2-config.h is generated
+# in the top-level *build* directory, so out-of-tree builds fail with
+# "fatal error: pvfs2-config.h: No such file or directory".  Target objects
+# already add "-I ."; the patch adds the equivalent -I$(builddir) for
+# BUILD_CFLAGS.  We keep the standard out-of-tree build instead of copying the
+# whole source tree per configuration (COPY_SOURCE).
+vcpkg_extract_source_archive(SOURCE_PATH ARCHIVE "${ARCHIVE}"
+    PATCHES fix-out-of-tree-statecomp.patch
+)
 
 # The release tarball ships Makefile.in/module.mk.in but no generated
 # configure; regenerate it exactly like the upstream ./prepare script.

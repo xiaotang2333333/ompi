@@ -9,6 +9,27 @@ vcpkg_extract_source_archive(
     ARCHIVE "${ARCHIVE}"
 )
 
+# The 1.21 release tarball was assembled with automake 1.17 and ships
+# aclocal.m4/Makefile.in that are older than the bundled config/*.m4 files.
+# Make would then try to regenerate them, which fails on hosts that only
+# provide automake 1.16 (e.g. Ubuntu 24.04).  Refresh the timestamps of the
+# shipped generated files, keeping aclocal.m4 older than the files generated
+# from it.
+file(GLOB_RECURSE qthreads_generated_aclocal LIST_DIRECTORIES false
+    "${SOURCE_PATH}/*aclocal.m4"
+)
+file(GLOB_RECURSE qthreads_generated_files LIST_DIRECTORIES false
+    "${SOURCE_PATH}/*Makefile.in"
+    "${SOURCE_PATH}/*config.h.in"
+    "${SOURCE_PATH}/*configure"
+)
+if(qthreads_generated_aclocal)
+    file(TOUCH ${qthreads_generated_aclocal})
+endif()
+if(qthreads_generated_files)
+    file(TOUCH ${qthreads_generated_files})
+endif()
+
 vcpkg_make_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS

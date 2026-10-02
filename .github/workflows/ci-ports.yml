@@ -49,6 +49,24 @@ jobs:
           - {port: ucx, triplet: x64-linux-dynamic, linkage: dynamic}
           - {port: ucc, triplet: x64-linux-dynamic, linkage: dynamic}
           - {port: openmpi, triplet: x64-linux-dynamic, linkage: dynamic}
+          - {port: knem, triplet: arm64-linux, linkage: headers}
+          - {port: valgrind, triplet: arm64-linux, linkage: headers}
+          - {port: libnl, triplet: arm64-linux, linkage: static}
+          - {port: libnl, triplet: arm64-linux-dynamic, linkage: dynamic}
+          - {port: memkind, triplet: arm64-linux, linkage: static}
+          - {port: memkind, triplet: arm64-linux-dynamic, linkage: dynamic}
+          - {port: munge, triplet: arm64-linux, linkage: static}
+          - {port: munge, triplet: arm64-linux-dynamic, linkage: dynamic}
+          - {port: portals4, triplet: arm64-linux, linkage: static}
+          - {port: portals4, triplet: arm64-linux-dynamic, linkage: dynamic}
+          - {port: qthreads, triplet: arm64-linux, linkage: static}
+          - {port: qthreads, triplet: arm64-linux-dynamic, linkage: dynamic}
+          - {port: xpmem, triplet: arm64-linux, linkage: static}
+          - {port: xpmem, triplet: arm64-linux-dynamic, linkage: dynamic}
+          - {port: pvfs2, triplet: arm64-linux-dynamic, linkage: dynamic}
+          - {port: ucx, triplet: arm64-linux-dynamic, linkage: dynamic}
+          - {port: ucc, triplet: arm64-linux-dynamic, linkage: dynamic}
+          - {port: openmpi, triplet: arm64-linux-dynamic, linkage: dynamic}
     defaults:
       run:
         shell: bash
@@ -63,6 +81,10 @@ jobs:
             autoconf autoconf-archive automake libtool libtool-bin m4 \
             gettext bison flex perl python3 zip unzip tar git
 
+      - name: Install AArch64 cross toolchain
+        if: startsWith(matrix.triplet, 'arm64-')
+        run: sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
       - name: Bootstrap pinned vcpkg
         run: |
           git clone --filter=blob:none --no-checkout https://github.com/microsoft/vcpkg.git vcpkg
@@ -75,6 +97,7 @@ jobs:
           TRIPLET: ${{ matrix.triplet }}
         run: |
           ./vcpkg/vcpkg install "$PORT:$TRIPLET" --classic \
+            --host-triplet=x64-linux \
             --overlay-ports="$GITHUB_WORKSPACE/overlay-ports" \
             --x-install-root="$GITHUB_WORKSPACE/installed"
 

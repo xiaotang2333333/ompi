@@ -6,6 +6,19 @@ source_file="$GITHUB_WORKSPACE/.github/tests/ports/$PORT.c"
 test -f "$source_file"
 test -s "$root/share/$PORT/copyright"
 
+compiler=cc
+cross=false
+if [[ "$TRIPLET" == arm64-* ]]; then
+  compiler=aarch64-linux-gnu-gcc
+  cross=true
+fi
+verify_arm64() {
+  local file="$1"
+  readelf -h "$file" > "$RUNNER_TEMP/$PORT-elf-headers.txt"
+  awk '$1 == "Machine:" { count++; if ($2 != "AArch64") bad = 1 }
+       END { exit (!count || bad) }' "$RUNNER_TEMP/$PORT-elf-headers.txt"
+}
+
 includes=("-I$root/include")
 modules=()
 libraries=()
@@ -51,6 +64,9 @@ for config in "${configs[@]}"; do
       extension=a
     fi
     test -f "$libdir/lib$primary_library.$extension"
+    if [[ "$cross" == true ]]; then
+      verify_arm64 "$libdir/lib$primary_library.$extension"
+    fi
   fi
   for module in "${modules[@]}"; do
     pkg-config --modversion "$module"
@@ -69,15 +85,20 @@ for config in "${configs[@]}"; do
   for integration in "${integrations[@]}"; do
     binary="$RUNNER_TEMP/$PORT-$config-$integration"
     if [[ "$integration" == pkgconfig ]]; then
-      cc -std=c11 "$source_file" \
+      "$compiler" -std=c11 "$source_file" \
         $(pkg-config --cflags --libs "${pkgconfig_options[@]}" "${modules[@]}") \
         -Wl,-rpath,"$libdir" -Wl,-rpath-link,"$libdir" -o "$binary"
     else
-      cc -std=c11 "$source_file" "${includes[@]}" -L"$libdir" \
+      "$compiler" -std=c11 "$source_file" "${includes[@]}" -L"$libdir" \
         "${libraries[@]}" -Wl,-rpath,"$libdir" -Wl,-rpath-link,"$libdir" -o "$binary"
     fi
     echo "Testing $PORT / $config / $integration"
-    timeout 60s "$binary"
+    if [[ "$cross" == true ]]; then
+      verify_arm64 "$binary"
+      echo "ARM64 consumer compiled and linked; execution requires an ARM64 runner"
+    else
+      timeout 60s "$binary"
+    fi
   done
 done
 test ! -d "$root/debug/include"
