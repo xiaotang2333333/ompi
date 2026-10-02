@@ -1,0 +1,19 @@
+{
+  "name": "ucx",
+  "version": "1.22.0",
+  "description": "Unified Communication X (UCX) is an optimized communication framework for high-bandwidth and low-latency networks.",
+  "homepage": "https://www.openucx.org/",
+  "license": "BSD-3-Clause",
+  "supports": "linux",
+  "dependencies": [
+    {
+      "name": "pkgconf",
+      "host": true
+    },
+    "rdma-core",
+    {
+      "name": "vcpkg-make",
+      "host": true
+    }
+  ]
+}

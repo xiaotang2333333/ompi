@@ -1,0 +1,19 @@
+{
+  "name": "portals4",
+  "version": "4.2",
+  "description": "Reference implementation of the Portals 4 network programming interface. Builds the user-space library only, with the UDP transport and without MPI, the bundled PMI runtime or the IB/OFED transport.",
+  "homepage": "https://github.com/Portals4/portals4",
+  "license": "BSD-3-Clause",
+  "supports": "linux",
+  "dependencies": [
+    "libev",
+    {
+      "name": "pkgconf",
+      "host": true
+    },
+    {
+      "name": "vcpkg-make",
+      "host": true
+    }
+  ]
+}

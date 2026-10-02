@@ -1,0 +1,19 @@
+{
+  "name": "ucc",
+  "version": "1.9.0",
+  "description": "Unified Collective Communication (UCC) is a collective communication operations API and library for high-performance computing and machine learning applications.",
+  "homepage": "https://www.openucx.org/",
+  "license": "BSD-3-Clause",
+  "supports": "linux",
+  "dependencies": [
+    {
+      "name": "pkgconf",
+      "host": true
+    },
+    "ucx",
+    {
+      "name": "vcpkg-make",
+      "host": true
+    }
+  ]
+}

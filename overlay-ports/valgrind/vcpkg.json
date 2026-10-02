@@ -1,0 +1,8 @@
+{
+  "name": "valgrind",
+  "version": "3.27.1",
+  "description": "Header-only package providing Valgrind's public client-request headers (valgrind/valgrind.h and valgrind/memcheck.h) used by Open MPI's memchecker. The Valgrind tools themselves are not built.",
+  "homepage": "https://valgrind.org/",
+  "license": "LicenseRef-Valgrind-Client-Headers",
+  "supports": "linux"
+}

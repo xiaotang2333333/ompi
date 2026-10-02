@@ -1,0 +1,8 @@
+{
+  "name": "knem",
+  "version": "1.1.4",
+  "description": "KNEM is a Linux kernel module that provides high-performance process-to-process memory copies. This port provides only the userspace ABI header. Runtime use requires the target system to provide and load a compatible knem kernel module.",
+  "homepage": "https://knem.gitlabpages.inria.fr/",
+  "license": "BSD-3-Clause",
+  "supports": "linux"
+}

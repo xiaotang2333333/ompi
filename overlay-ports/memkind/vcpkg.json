@@ -1,0 +1,15 @@
+{
+  "name": "memkind",
+  "version": "1.14.0",
+  "description": "User-extensible heap manager built on jemalloc that enables control of memory characteristics and partitioning of the heap between kinds of memory",
+  "homepage": "https://github.com/memkind/memkind",
+  "license": "BSD-3-Clause AND BSD-2-Clause AND Apache-2.0",
+  "supports": "linux",
+  "dependencies": [
+    "numactl",
+    {
+      "name": "vcpkg-make",
+      "host": true
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "libnl",
+  "version": "3.12.0",
+  "description": "Libraries providing APIs to netlink protocol based Linux kernel interfaces. The core (libnl-3) and route (libnl-route-3) libraries are the ones consumed by Open MPI and embedded PRRTE; the command line utilities are disabled.",
+  "homepage": "https://github.com/thom311/libnl",
+  "license": "LGPL-2.1-only",
+  "supports": "linux",
+  "dependencies": [
+    {
+      "name": "vcpkg-make",
+      "host": true
+    }
+  ]
+}

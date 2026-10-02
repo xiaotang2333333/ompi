@@ -1,0 +1,14 @@
+{
+  "name": "xpmem",
+  "version": "2.7.4",
+  "description": "XPMEM (Linux Cross-Memory Attach) userspace library and header from the Open MPI-compatible openucx/xpmem source, configured with --disable-kernel-module. Installs libxpmem and xpmem.h, providing the xpmem_make API required by Open MPI's --with-xpmem support. The kernel module is neither built nor installed; runtime use requires the host to provide and load a matching xpmem kernel module.",
+  "homepage": "https://github.com/openucx/xpmem",
+  "license": "LGPL-2.1-or-later",
+  "supports": "linux",
+  "dependencies": [
+    {
+      "name": "vcpkg-make",
+      "host": true
+    }
+  ]
+}

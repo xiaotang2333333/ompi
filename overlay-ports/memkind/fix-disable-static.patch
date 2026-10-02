@@ -1,0 +1,15 @@
+diff --git a/Makefile.am b/Makefile.am
+index 94937c2..8fc36ef 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -684,9 +684,7 @@ end
+ endef
+ 
+ static_lib: libmemkind.la
+-	bash -c "ar -M < <(echo -e '$(ar_prog)')"
+-	cp libmemkind.a .libs/
+-	rm libmemkind.a
++	bash -c "if [ -e .libs/libmemkind.a ]; then ar -M < <(echo -e '$(ar_prog)'); cp libmemkind.a .libs/; rm libmemkind.a; fi"
+ 
+ JEMALLOC_CONFIG = --enable-autogen @min_lg_align_opt@ --without-export --with-version=5.3.0-0-g54eaed1d8b56b1aa528be3bdd1877e59c56fa90c \
+ 			@jemalloc_build_type_flags@  @memkind_initial_exec_tls@ --with-jemalloc-prefix=@memkind_prefix@ \

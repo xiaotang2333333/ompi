@@ -1,0 +1,14 @@
+{
+  "name": "qthreads",
+  "version": "1.21",
+  "description": "Lightweight locality-aware user-level threading runtime",
+  "homepage": "https://github.com/sandialabs/qthreads",
+  "license": "BSD-3-Clause",
+  "supports": "linux",
+  "dependencies": [
+    {
+      "name": "vcpkg-make",
+      "host": true
+    }
+  ]
+}

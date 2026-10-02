@@ -1,0 +1,14 @@
+{
+  "name": "pvfs2",
+  "version": "2.10.1",
+  "description": "OrangeFS (formerly PVFS2) client library and headers used by Open MPI's PVFS2/OrangeFS MPI-IO component. Builds the user-space client only: no server, kernel module, FUSE or MPI dependency.",
+  "homepage": "https://www.orangefs.org/",
+  "license": "LGPL-2.1-or-later",
+  "supports": "linux",
+  "dependencies": [
+    {
+      "name": "vcpkg-make",
+      "host": true
+    }
+  ]
+}
