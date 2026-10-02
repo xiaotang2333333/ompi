@@ -11,6 +11,7 @@ vcpkg_download_distfile(ARCHIVE
 vcpkg_extract_source_archive(
     SOURCE_PATH
     ARCHIVE "${ARCHIVE}"
+    PATCHES fix-optional-packages.patch
 )
 
 vcpkg_find_acquire_program(PERL)
@@ -28,55 +29,55 @@ if(VCPKG_TARGET_IS_OSX)
     string(APPEND VCPKG_LINKER_FLAGS " -headerpad_max_install_names -framework CoreFoundation -framework IOKit")
 endif()
 
+set(OPENMPI_FEATURE_OPTIONS)
+set(OPENMPI_FEATURE_OPTIONS_DEBUG)
+set(OPENMPI_FEATURE_OPTIONS_RELEASE)
+set(OPENMPI_LANGUAGES C CXX)
+vcpkg_backup_env_variables(VARS PKG_CONFIG_PATH)
+include("${CURRENT_PORT_DIR}/feature-options.cmake")
+if("fortran" IN_LIST FEATURES)
+    # vcpkg-make does not forward a Fortran compiler or FCFLAGS itself.
+    # Detect them with the target toolchain, including when cross-compiling.
+    vcpkg_cmake_get_vars(fortran_vars ADDITIONAL_LANGUAGES Fortran)
+    include("${fortran_vars}")
+    list(APPEND OPENMPI_LANGUAGES Fortran)
+    list(APPEND OPENMPI_FEATURE_OPTIONS
+        --enable-mpi-fortran=yes
+        "FC=${VCPKG_DETECTED_CMAKE_Fortran_COMPILER}"
+    )
+    foreach(config IN ITEMS DEBUG RELEASE)
+        list(APPEND OPENMPI_FEATURE_OPTIONS_${config}
+            "FCFLAGS=${VCPKG_COMBINED_Fortran_FLAGS_${config}}"
+        )
+    endforeach()
+else()
+    list(APPEND OPENMPI_FEATURE_OPTIONS --enable-mpi-fortran=no)
+endif()
+
 vcpkg_make_configure(
     COPY_SOURCE
     SOURCE_PATH "${SOURCE_PATH}"
+    LANGUAGES ${OPENMPI_LANGUAGES}
     OPTIONS
         --disable-dependency-tracking
         "--with-hwloc=${CURRENT_INSTALLED_DIR}"
-        "--with-hwloc-libdir=${CURRENT_INSTALLED_DIR}/lib"
         "--with-libevent=${CURRENT_INSTALLED_DIR}"
-        "--with-libevent-libdir=${CURRENT_INSTALLED_DIR}/lib"
         --with-pmix=internal
         --with-prrte=internal
-        # Prevent optional components from depending on libraries found on the
-        # build machine. Such integrations need declared vcpkg dependencies.
-        --without-argobots
-        --without-cray-xpmem
-        --without-cuda
-        --without-gpfs
-        --without-hcoll
-        --without-ime
-        --without-knem
-        --without-libltdl
-        --without-libnl
-        --without-lsf
-        --without-lustre
-        --without-memkind
-        --without-munge
-        --without-ofi
-        --without-pbs
-        --without-portals4
-        --without-psm2
-        --without-pvfs2
-        --without-qthreads
-        --without-rocm
-        --without-sge
-        --without-slurm
-        --without-tm
-        --without-ucc
-        --without-ucx
-        --without-ugni
-        --without-udreg
-        --without-usnic
-        --without-valgrind
-        --without-xpmem
-        --without-zlibng
-        --enable-mpi-fortran=no
+        --without-libev
+        ${OPENMPI_FEATURE_OPTIONS}
     OPTIONS_DEBUG
         --enable-debug
+        "--with-hwloc-libdir=${CURRENT_INSTALLED_DIR}/debug/lib"
+        "--with-libevent-libdir=${CURRENT_INSTALLED_DIR}/debug/lib"
+        ${OPENMPI_FEATURE_OPTIONS_DEBUG}
+    OPTIONS_RELEASE
+        "--with-hwloc-libdir=${CURRENT_INSTALLED_DIR}/lib"
+        "--with-libevent-libdir=${CURRENT_INSTALLED_DIR}/lib"
+        ${OPENMPI_FEATURE_OPTIONS_RELEASE}
 )
 vcpkg_make_install()
+vcpkg_restore_env_variables(VARS PKG_CONFIG_PATH)
 vcpkg_fixup_pkgconfig()
 
 # pmix_config.h records the configure command line. Redact its build-machine

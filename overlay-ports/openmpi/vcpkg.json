@@ -1,6 +1,7 @@
 {
   "name": "openmpi",
   "version": "5.0.11",
+  "port-version": 1,
   "description": "The Open MPI Project is an open source Message Passing Interface implementation that is developed and maintained by a consortium of academic, research, and industry partners. Open MPI is therefore able to combine the expertise, technologies, and resources from all across the High Performance Computing community in order to build the best MPI library available. Open MPI offers advantages for system and software vendors, application developers and computer science researchers.",
   "homepage": "https://www.open-mpi.org/",
   "license": "BSD-3-Clause-Open-MPI AND mpich2 AND CECILL-B AND BSD-3-Clause",
@@ -15,7 +16,213 @@
     {
       "name": "vcpkg-make",
       "host": true
+    }
+  ],
+  "default-features": [
+    {
+      "name": "cma",
+      "platform": "linux"
     },
+    "ft",
+    "romio",
+    "treematch",
     "zlib"
-  ]
+  ],
+  "features": {
+    "cma": {
+      "description": "Enable Linux Cross Memory Attach shared-memory transfers",
+      "supports": "linux"
+    },
+    "cray-xpmem": {
+      "description": "Enable the installed Cray XPMEM SDK specified by OPENMPI_CRAY_XPMEM_ROOT (checked before generic XPMEM)",
+      "supports": "linux"
+    },
+    "cuda": {
+      "description": "Enable CUDA-aware MPI using an installed CUDA Toolkit, found by the cuda port",
+      "supports": "linux & (x64 | arm64)",
+      "dependencies": [
+        "cuda"
+      ]
+    },
+    "fortran": {
+      "description": "Build MPI Fortran bindings using the target toolchain's Fortran compiler",
+      "dependencies": [
+        {
+          "name": "vcpkg-cmake-get-vars",
+          "host": true
+        }
+      ]
+    },
+    "ft": {
+      "description": "Enable MPI ULFM fault tolerance and embedded PRRTE fault-tolerance support"
+    },
+    "gpfs": {
+      "description": "Enable GPFS MPI-IO using the installed IBM Storage Scale SDK specified by OPENMPI_GPFS_ROOT",
+      "supports": "linux"
+    },
+    "hcoll": {
+      "description": "Enable HCOLL collectives using an installed NVIDIA HPC-X SDK specified by OPENMPI_HCOLL_ROOT",
+      "supports": "linux"
+    },
+    "ime": {
+      "description": "Enable IME MPI-IO using the installed DDN IME SDK specified by OPENMPI_IME_ROOT",
+      "supports": "linux"
+    },
+    "knem": {
+      "description": "Enable KNEM shared-memory transfers (requires a compatible kernel module at runtime)",
+      "supports": "linux",
+      "dependencies": [
+        "knem"
+      ]
+    },
+    "libltdl": {
+      "description": "Make libltdl available as an upstream fallback for dynamic loading without overriding native dlopen",
+      "dependencies": [
+        "libltdl"
+      ]
+    },
+    "libnl": {
+      "description": "Enable libnl3 netlink reachability components in Open MPI and embedded PRRTE",
+      "supports": "linux",
+      "dependencies": [
+        "libnl"
+      ]
+    },
+    "lsf": {
+      "description": "Enable IBM LSF scheduler integration using the installed SDK specified by OPENMPI_LSF_ROOT",
+      "supports": "linux"
+    },
+    "lustre": {
+      "description": "Enable Lustre MPI-IO using matching target client development libraries specified by OPENMPI_LUSTRE_ROOT",
+      "supports": "linux"
+    },
+    "memkind": {
+      "description": "Enable the memkind memory-pool component",
+      "supports": "linux & x64",
+      "dependencies": [
+        "memkind"
+      ]
+    },
+    "munge": {
+      "description": "Enable PMIx MUNGE authentication (requires a configured MUNGE daemon at runtime)",
+      "supports": "linux",
+      "dependencies": [
+        "munge"
+      ]
+    },
+    "ofi": {
+      "description": "Enable OFI transport using libfabric (providers depend on the libfabric build)",
+      "dependencies": [
+        "libfabric"
+      ]
+    },
+    "pbs": {
+      "description": "Enable PRRTE PBS allocation detection without linking the TM library"
+    },
+    "portals4": {
+      "description": "Enable Portals4 transport",
+      "supports": "linux",
+      "dependencies": [
+        "portals4"
+      ]
+    },
+    "psm2": {
+      "description": "Enable PSM2 transport (requires Omni-Path hardware and an hfi1 driver at runtime)",
+      "supports": "linux & x64",
+      "dependencies": [
+        "psm2"
+      ]
+    },
+    "pvfs2": {
+      "description": "Enable PVFS2/OrangeFS MPI-IO client support",
+      "supports": "linux",
+      "dependencies": [
+        "pvfs2"
+      ]
+    },
+    "rocm": {
+      "description": "Enable ROCm-aware MPI using the installed HIP SDK specified by OPENMPI_ROCM_ROOT",
+      "supports": "linux & x64"
+    },
+    "romio": {
+      "description": "Build the bundled ROMIO MPI-IO component (OMPIO is available without this feature)"
+    },
+    "sge": {
+      "description": "Enable PRRTE Sun/Univa Grid Engine allocation detection"
+    },
+    "slurm": {
+      "description": "Enable PRRTE Slurm launch and allocation detection (scheduler commands are required at runtime)"
+    },
+    "tm": {
+      "description": "Enable Torque/PBSPro TM launch support using the installed target SDK specified by OPENMPI_TM_ROOT",
+      "supports": "linux"
+    },
+    "treematch": {
+      "description": "Build the bundled TreeMatch topology component"
+    },
+    "ucc": {
+      "description": "Enable Unified Collective Communication collectives",
+      "supports": "linux",
+      "dependencies": [
+        "ucc"
+      ]
+    },
+    "ucx": {
+      "description": "Enable Unified Communication X transports for MPI and OpenSHMEM",
+      "supports": "linux",
+      "dependencies": [
+        "ucx"
+      ]
+    },
+    "udreg": {
+      "description": "Enable Cray uDREG using the installed SDK specified by OPENMPI_UDREG_ROOT",
+      "supports": "linux & x64"
+    },
+    "ugni": {
+      "description": "Enable Cray uGNI using the installed SDK specified by OPENMPI_UGNI_ROOT",
+      "supports": "linux & x64"
+    },
+    "usnic": {
+      "description": "Enable the Cisco usNIC BTL through libfabric (requires its usNIC provider and hardware at runtime)",
+      "supports": "linux & x64",
+      "dependencies": [
+        {
+          "name": "openmpi",
+          "default-features": false,
+          "features": [
+            "ofi"
+          ]
+        }
+      ]
+    },
+    "valgrind": {
+      "description": "Enable the Valgrind memchecker component and its buffer checks",
+      "supports": "linux",
+      "dependencies": [
+        "valgrind"
+      ]
+    },
+    "xpmem": {
+      "description": "Enable XPMEM shared-memory transfers (requires a compatible kernel module at runtime)",
+      "supports": "linux",
+      "dependencies": [
+        "xpmem"
+      ]
+    },
+    "zlib": {
+      "description": "Enable PMIx zlib compression",
+      "dependencies": [
+        "zlib"
+      ]
+    },
+    "zlibng": {
+      "description": "Enable PMIx native zlib-ng compression (requires ZLIB_COMPAT=OFF)",
+      "dependencies": [
+        {
+          "name": "zlib-ng",
+          "default-features": false
+        }
+      ]
+    }
+  }
 }
