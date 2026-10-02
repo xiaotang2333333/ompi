@@ -51,16 +51,16 @@ diff --git a/configure b/configure
    should_build=$should_build
  else $as_nop
    if test -n "$with_memkind" && test "$with_memkind" != "no"
-then :
+ then :
 -  as_fn_error $? "Lustre support requested but not found.  Aborting" "$LINENO" 5
 +  as_fn_error $? "MEMKIND support requested but not found.  Aborting" "$LINENO" 5
-fi
+ fi
             should_build=0
 @@ -112869,3 +112869,4 @@
 -    if test $opal_libnl_version -eq 3
 +    if test $opal_libnl_version -eq 3 ||
 +           { test $opal_libnl_version -ne 1 && test -n "$with_libnl" && test "$with_libnl" != "no"; }
-then :
+ then :
    # Use the libnl base options for the route search
 diff --git a/3rd-party/prrte/src/mca/prtereachable/netlink/configure.m4 b/3rd-party/prrte/src/mca/prtereachable/netlink/configure.m4
 --- a/3rd-party/prrte/src/mca/prtereachable/netlink/configure.m4
