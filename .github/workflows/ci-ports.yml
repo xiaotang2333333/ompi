@@ -2,7 +2,7 @@ name: Isolated Overlay Ports CI
 
 on:
   push:
-    branches: [ci-ports]
+    branches: [ci-ports, ci-features]
     paths:
       - overlay-ports/**
       - .github/workflows/ci-ports.yml
@@ -23,7 +23,7 @@ env:
 
 jobs:
   port:
-    name: ${{ matrix.port }} / ${{ matrix.triplet }}
+    name: ${{ matrix.port }}${{ matrix.features && format('[{0}]', matrix.features) || '' }} / ${{ matrix.triplet }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -67,6 +67,42 @@ jobs:
           - {port: ucx, triplet: arm64-linux-dynamic, linkage: dynamic}
           - {port: ucc, triplet: arm64-linux-dynamic, linkage: dynamic}
           - {port: openmpi, triplet: arm64-linux-dynamic, linkage: dynamic}
+          - {port: rdma-core, triplet: x64-linux-dynamic, linkage: dynamic, features: 'kernel-headers,neighbor-resolution'}
+          - {port: rdma-core, triplet: arm64-linux-dynamic, linkage: dynamic, features: 'kernel-headers,neighbor-resolution'}
+          - {port: kmod, triplet: x64-linux, linkage: static}
+          - {port: kmod, triplet: x64-linux-dynamic, linkage: dynamic}
+          - {port: kmod, triplet: arm64-linux, linkage: static}
+          - {port: kmod, triplet: arm64-linux-dynamic, linkage: dynamic}
+          - {port: kmod, triplet: x64-linux, linkage: static, features: 'openssl,xz,zlib,zstd'}
+          - {port: kmod, triplet: x64-linux-dynamic, linkage: dynamic, features: 'openssl,xz,zlib,zstd'}
+          - {port: kmod, triplet: arm64-linux, linkage: static, features: 'openssl,xz,zlib,zstd'}
+          - {port: kmod, triplet: arm64-linux-dynamic, linkage: dynamic, features: 'openssl,xz,zlib,zstd'}
+          - {port: libsystemd, triplet: x64-linux, linkage: static, features: libudev}
+          - {port: libsystemd, triplet: x64-linux-dynamic, linkage: dynamic, features: libudev}
+          - {port: libsystemd, triplet: arm64-linux, linkage: static, features: libudev}
+          - {port: libsystemd, triplet: arm64-linux-dynamic, linkage: dynamic, features: libudev}
+          - {port: ndctl, triplet: x64-linux, linkage: static}
+          - {port: ndctl, triplet: x64-linux-dynamic, linkage: dynamic}
+          - {port: ndctl, triplet: arm64-linux, linkage: static}
+          - {port: ndctl, triplet: arm64-linux-dynamic, linkage: dynamic}
+          - {port: memkind, triplet: x64-linux, linkage: static, features: 'hwloc,daxctl'}
+          - {port: memkind, triplet: x64-linux-dynamic, linkage: dynamic, features: 'hwloc,daxctl'}
+          - {port: memkind, triplet: arm64-linux, linkage: static, features: 'hwloc,daxctl'}
+          - {port: memkind, triplet: arm64-linux-dynamic, linkage: dynamic, features: 'hwloc,daxctl'}
+          - {port: qthreads, triplet: x64-linux, linkage: static, features: hwloc}
+          - {port: qthreads, triplet: x64-linux-dynamic, linkage: dynamic, features: hwloc}
+          - {port: qthreads, triplet: arm64-linux, linkage: static, features: hwloc}
+          - {port: qthreads, triplet: arm64-linux-dynamic, linkage: dynamic, features: hwloc}
+          - {port: ucx, triplet: x64-linux-dynamic, linkage: dynamic, features: 'knem,xpmem,valgrind'}
+          - {port: ucx, triplet: arm64-linux-dynamic, linkage: dynamic, features: 'knem,xpmem,valgrind'}
+          - {port: ucc, triplet: x64-linux-dynamic, linkage: dynamic, features: 'ibverbs,rdmacm'}
+          - {port: ucc, triplet: arm64-linux-dynamic, linkage: dynamic, features: 'ibverbs,rdmacm'}
+          - {port: portals4, triplet: x64-linux, linkage: static, features: knem, compile_only: true}
+          - {port: portals4, triplet: x64-linux-dynamic, linkage: dynamic, features: knem, compile_only: true}
+          - {port: portals4, triplet: arm64-linux, linkage: static, features: knem, compile_only: true}
+          - {port: portals4, triplet: arm64-linux-dynamic, linkage: dynamic, features: knem, compile_only: true}
+          - {port: pvfs2, triplet: x64-linux-dynamic, linkage: dynamic, features: ssl}
+          - {port: pvfs2, triplet: arm64-linux-dynamic, linkage: dynamic, features: ssl}
     defaults:
       run:
         shell: bash
@@ -95,8 +131,13 @@ jobs:
         env:
           PORT: ${{ matrix.port }}
           TRIPLET: ${{ matrix.triplet }}
+          FEATURES: ${{ matrix.features }}
         run: |
-          ./vcpkg/vcpkg install "$PORT:$TRIPLET" --classic \
+          spec="$PORT"
+          if [[ -n "$FEATURES" ]]; then
+            spec="$PORT[$FEATURES]"
+          fi
+          ./vcpkg/vcpkg install "$spec:$TRIPLET" --classic \
             --host-triplet=x64-linux \
             --overlay-ports="$GITHUB_WORKSPACE/overlay-ports" \
             --x-install-root="$GITHUB_WORKSPACE/installed"
@@ -106,13 +147,15 @@ jobs:
           PORT: ${{ matrix.port }}
           TRIPLET: ${{ matrix.triplet }}
           LINKAGE: ${{ matrix.linkage }}
+          FEATURES: ${{ matrix.features }}
+          COMPILE_ONLY: ${{ matrix.compile_only || false }}
         run: bash .github/tests/ports/run-smoke.sh
 
       - name: Upload diagnostic logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: logs-${{ matrix.port }}-${{ matrix.triplet }}
+          name: logs-${{ matrix.port }}-${{ matrix.features || 'core' }}-${{ matrix.triplet }}
           if-no-files-found: ignore
           retention-days: 7
           path: |
