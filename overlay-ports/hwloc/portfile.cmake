@@ -19,26 +19,49 @@ elseif(VCPKG_TARGET_IS_OSX)
     list(APPEND OPTIONS "HWLOC_LDFLAGS=-framework CoreFoundation")
 endif()
 
+# Optional upstream backends, one per feature.  Every backend is passed
+# explicitly: without --disable, configure would silently pick up libraries
+# from the build machine, and without --enable, a requested feature could
+# silently disappear because most probes only hard-error when explicitly
+# enabled.
+set(HWLOC_FEATURE_OPTIONS "")
+foreach(hwloc_backend IN ITEMS libxml2 cairo opencl levelzero libudev cuda nvml)
+    if(hwloc_backend IN_LIST FEATURES)
+        list(APPEND HWLOC_FEATURE_OPTIONS "--enable-${hwloc_backend}")
+    else()
+        list(APPEND HWLOC_FEATURE_OPTIONS "--disable-${hwloc_backend}")
+    endif()
+endforeach()
+# pci (libpciaccess), gl (libXNVCtrl) and rsmi (ROCm SMI) have no vcpkg
+# dependency port, so they cannot be offered as features and stay disabled.
+list(APPEND HWLOC_FEATURE_OPTIONS
+    --disable-pci
+    --disable-gl
+    --disable-rsmi
+)
+
 vcpkg_configure_make(
     SOURCE_PATH "${SOURCE_PATH}"
     AUTOCONFIG
     OPTIONS
         ${OPTIONS}
-        --disable-libxml2
-        --disable-opencl
-        --disable-cairo
-        --disable-cuda
-        --disable-libudev
-        --disable-levelzero
-        --disable-nvml
-        --disable-rsmi
-        --disable-pci
+        ${HWLOC_FEATURE_OPTIONS}
         #--disable-cpuid
         #--disable-picky
 )
 
 vcpkg_install_make()
 vcpkg_fixup_pkgconfig()
+
+# --enable-libudev is the only probe that stays silent when the dependency is
+# missing, so assert that the requested feature really reached the package.
+if("libudev" IN_LIST FEATURES)
+    file(READ "${CURRENT_PACKAGES_DIR}/lib/pkgconfig/hwloc.pc" HWLOC_PC_CONTENTS)
+    if(NOT HWLOC_PC_CONTENTS MATCHES "ludev")
+        message(FATAL_ERROR "hwloc[libudev] was requested, but hwloc.pc does not link -ludev (libudev probe did not find the dependency)")
+    endif()
+endif()
+
 vcpkg_copy_tool_dependencies("${CURRENT_PACKAGES_DIR}/tools/${PORT}/bin")
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
