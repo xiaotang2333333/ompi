@@ -40,6 +40,7 @@ index 8b396ff..5dd6fa9 100644
  fi
  AC_SUBST([enable_hwloc])
  
+
 diff --git a/memkind.pc.in b/memkind.pc.in
 index c7eb500..5d2ad16 100644
 --- a/memkind.pc.in
