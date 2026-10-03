@@ -1,0 +1,17 @@
+diff --git a/hwloc/Makefile.am b/hwloc/Makefile.am
+index fd84f79..2bb54ed 100644
+--- a/hwloc/Makefile.am
++++ b/hwloc/Makefile.am
+@@ -190,11 +190,10 @@ if HWLOC_HAVE_WINDOWS
+ 
+ LC_MESSAGES=C
+ export LC_MESSAGES
+-ldflags += -Xlinker --output-def -Xlinker .libs/libhwloc.def
+ 
+ if HWLOC_HAVE_MS_LIB
+ .libs/libhwloc.lib: libhwloc.la
+-	[ ! -r .libs/libhwloc.def ] || "$(HWLOC_MS_LIB)" -machine:$(HWLOC_MS_LIB_ARCH) -def:.libs/libhwloc.def -name:libhwloc-$(libhwloc_so_name) -out:.libs/libhwloc.lib
++#	[ ! -r .libs/libhwloc.def ] || "$(HWLOC_MS_LIB)" -machine:$(HWLOC_MS_LIB_ARCH) -def:.libs/libhwloc.def -name:libhwloc-$(libhwloc_so_name) -out:.libs/libhwloc.lib
+ all-local: .libs/libhwloc.lib
+ endif HWLOC_HAVE_MS_LIB
+ 
