@@ -13,17 +13,19 @@ if [[ "$TRIPLET" == arm64-* ]]; then
 fi
 verify_arm64() {
   local file="$1"
+  local headers="$RUNNER_TEMP/$PORT-elf-headers.txt"
   if [[ "$file" == *.a ]]; then
     # Static libraries are ar archives, not ELF files; verify their members.
     local first
     first=$(ar t "$file" | head -n1)
     test -n "$first"
-    ar p "$file" "$first" | readelf -h - > "$RUNNER_TEMP/$PORT-elf-headers.txt"
+    ar p "$file" "$first" > "$RUNNER_TEMP/$PORT-archmember.o"
+    readelf -h "$RUNNER_TEMP/$PORT-archmember.o" > "$headers"
   else
-    readelf -h "$file" > "$RUNNER_TEMP/$PORT-elf-headers.txt"
+    readelf -h "$file" > "$headers"
   fi
   awk '$1 == "Machine:" { count++; if ($2 != "AArch64") bad = 1 }
-       END { exit (!count || bad) }' "$RUNNER_TEMP/$PORT-elf-headers.txt"
+       END { exit (!count || bad) }' "$headers"
 }
 
 includes=("-I$root/include")
@@ -36,10 +38,21 @@ case "$PORT" in
     libraries=(-lqthread -pthread -ldl -lrt -lm)
     if [[ ",${FEATURES:-}," == *",hwloc,"* ]]; then
       modules+=(hwloc)
-      libraries+=(-lhwloc -lnuma)
+      libraries+=(-lhwloc)
     fi
     ;;
-  memkind) modules=(memkind); libraries=(-lmemkind -lnuma -pthread -ldl -lm) ;;
+  memkind)
+    modules=(memkind)
+    libraries=(-lmemkind -lnuma -pthread -ldl -lm)
+    if [[ ",${FEATURES:-}," == *",hwloc,"* ]]; then
+      modules+=(hwloc)
+      libraries+=(-lhwloc)
+    fi
+    if [[ ",${FEATURES:-}," == *",daxctl,"* ]]; then
+      modules+=(libdaxctl)
+      libraries+=(-ldaxctl -luuid -lkmod)
+    fi
+    ;;
   munge) modules=(munge); libraries=(-lmunge) ;;
   libnl)
     includes+=("-I$root/include/libnl3")
@@ -125,8 +138,17 @@ for config in "${configs[@]}"; do
         $(pkg-config --cflags --libs "${pkgconfig_options[@]}" "${modules[@]}") \
         -Wl,-rpath,"$libdir" -Wl,-rpath-link,"$libdir" -o "$binary"
     else
+      direct_libs=("${libraries[@]}")
+      if [[ "$config" == debug ]]; then
+        # lz4 names its debug shared library liblz4d.so.
+        for i in "${!direct_libs[@]}"; do
+          if [[ "${direct_libs[$i]}" == "-llz4" ]]; then
+            direct_libs[$i]="-llz4d"
+          fi
+        done
+      fi
       "$compiler" -std=c11 "$source_file" "${includes[@]}" -L"$libdir" \
-        "${libraries[@]}" -Wl,-rpath,"$libdir" -Wl,-rpath-link,"$libdir" -o "$binary"
+        "${direct_libs[@]}" -Wl,-rpath,"$libdir" -Wl,-rpath-link,"$libdir" -o "$binary"
     fi
     echo "Testing $PORT / $config / $integration"
     if [[ "$cross" == true ]]; then

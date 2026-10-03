@@ -1,0 +1,48 @@
+diff --git a/configure.ac b/configure.ac
+--- a/configure.ac
++++ b/configure.ac
+@@ -267,13 +267,16 @@ if test "x$enable_daxctl" = "x1" ; then
+     AC_CHECK_LIB(daxctl, daxctl_dev_get_memory, [daxctl_kmem=yes], [daxctl_kmem=no])
+ fi
+ if test "x$enable_daxctl" = "x2" ; then
+-    AC_CHECK_LIB(daxctl, daxctl_dev_get_memory, [daxctl_kmem=yes], [AC_MSG_ERROR([libdaxctl-devel v66 or later is required dependency by --enable-daxctl option])])
++    AC_CHECK_LIB(daxctl, daxctl_dev_get_memory, [daxctl_kmem=yes], [AC_MSG_ERROR([libdaxctl-devel v66 or later is required dependency by --enable-daxctl option])], [-luuid -lkmod -ldl -lm -lpthread])
+ fi
+ 
+ if test $daxctl_kmem = "yes" ; then
+     AC_DEFINE([MEMKIND_DAXCTL_KMEM], [1], [Automatic recognition of PMEM as system memory in MEMKIND_DAX_KMEM])
+     AC_SUBST(DAXCTL_LIBS, [-ldaxctl])
+-    LDFLAGS="$LDFLAGS -ldaxctl"
++    AC_SUBST(DAXCTL_PC, [libdaxctl])
++    LDFLAGS="$LDFLAGS -ldaxctl -luuid -lkmod -ldl -lm -lpthread"
++else
++    AC_SUBST(DAXCTL_PC, [])
+ fi
+ AC_SUBST([enable_daxctl])
+ 
+@@ -292,13 +295,16 @@ if test "x$enable_hwloc" = "x1" ; then
+     AC_CHECK_LIB(hwloc, hwloc_memattr_get_best_target, [hwloc_hmat=yes], [hwloc_hmat=no])
+ fi
+ if test "x$enable_hwloc" = "x2" ; then
+-    AC_CHECK_LIB(hwloc, hwloc_memattr_get_best_target, [hwloc_hmat=yes], [AC_MSG_ERROR([libhwloc-devel v2.3.0 or later is required dependency by --enable-hwloc option])])
++    AC_CHECK_LIB(hwloc, hwloc_memattr_get_best_target, [hwloc_hmat=yes], [AC_MSG_ERROR([libhwloc-devel v2.3.0 or later is required dependency by --enable-hwloc option])], [-lpthread -ldl -lm])
+ fi
+ 
+ if test $hwloc_hmat = "yes" ; then
+     AC_DEFINE([MEMKIND_HWLOC], [1], [Support for hwloc library])
+     AC_SUBST(HWLOC_LIBS, [-lhwloc])
+-    LDFLAGS="$LDFLAGS -lhwloc"
++    AC_SUBST(HWLOC_PC, [hwloc])
++    LDFLAGS="$LDFLAGS -lhwloc -lpthread -ldl -lm"
++else
++    AC_SUBST(HWLOC_PC, [])
+ fi
+ AC_SUBST([enable_hwloc])
+ 
+diff --git a/memkind.pc.in b/memkind.pc.in
+--- a/memkind.pc.in
++++ b/memkind.pc.in
+@@ -12,2 +12,3 @@ Libs: -L${libdir} -lmemkind
+ Libs: -L${libdir} -lmemkind
++Requires.private: @DAXCTL_PC@ @HWLOC_PC@
+ Libs.private: -ldl -lnuma -lpthread @DAXCTL_LIBS@ @HWLOC_LIBS@

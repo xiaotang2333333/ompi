@@ -9,6 +9,7 @@ vcpkg_from_github(
         disable-examples.patch
         fix-jemalloc-cross-host.patch
         fix-pkgconfig-private-math.patch
+        fix-static-feature-closure.patch
 )
 
 set(FEATURE_OPTIONS "")
