@@ -1,4 +1,5 @@
 diff --git a/configure.ac b/configure.ac
+index 8b396ff..5dd6fa9 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -267,13 +267,16 @@ if test "x$enable_daxctl" = "x1" ; then
@@ -40,9 +41,12 @@ diff --git a/configure.ac b/configure.ac
  AC_SUBST([enable_hwloc])
  
 diff --git a/memkind.pc.in b/memkind.pc.in
+index c7eb500..5d2ad16 100644
 --- a/memkind.pc.in
 +++ b/memkind.pc.in
-@@ -12,2 +12,3 @@ Libs: -L${libdir} -lmemkind
+@@ -10,4 +10,5 @@ URL: http://memkind.github.io/memkind
+ Version: @VERSION@
+ Cflags: -I${includedir}
  Libs: -L${libdir} -lmemkind
 +Requires.private: @DAXCTL_PC@ @HWLOC_PC@
- Libs.private: -ldl -lnuma -lpthread @DAXCTL_LIBS@ @HWLOC_LIBS@
+ Libs.private: -ldl -lnuma -lpthread @DAXCTL_LIBS@ @HWLOC_LIBS@ -lm
