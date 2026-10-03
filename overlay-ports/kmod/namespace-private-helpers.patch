@@ -1,0 +1,185 @@
+diff --git a/libkmod/libkmod-elf.c b/libkmod/libkmod-elf.c
+index f215f1e..463f0e9 100644
+--- a/libkmod/libkmod-elf.c
++++ b/libkmod/libkmod-elf.c
+@@ -673,7 +673,7 @@ const void *kmod_elf_strip(const struct kmod_elf *elf, unsigned int flags)
+ 
+ 	assert(flags & (KMOD_INSERT_FORCE_MODVERSION | KMOD_INSERT_FORCE_VERMAGIC));
+ 
+-	changed = memdup(elf->memory, elf->size);
++	changed = kmod_memdup(elf->memory, elf->size);
+ 	if (changed == NULL)
+ 		return NULL;
+ 
+diff --git a/libkmod/libkmod-module.c b/libkmod/libkmod-module.c
+index 0d74100..bfa430c 100644
+--- a/libkmod/libkmod-module.c
++++ b/libkmod/libkmod-module.c
+@@ -324,7 +324,7 @@ KMOD_EXPORT int kmod_module_new_from_path(struct kmod_ctx *ctx, const char *path
+ 	if (ctx == NULL || path == NULL || mod == NULL)
+ 		return -ENOENT;
+ 
+-	abspath = path_make_absolute_cwd(path);
++	abspath = kmod_path_make_absolute_cwd(path);
+ 	if (abspath == NULL) {
+ 		DBG(ctx, "no absolute path for %s\n", path);
+ 		return -ENOMEM;
+@@ -824,7 +824,7 @@ static int module_do_install_commands(struct kmod_module *mod, const char *optio
+ 	cmdlen = strlen(command);
+ 	varlen = sizeof("$CMDLINE_OPTS") - 1;
+ 
+-	cmd = memdup(command, cmdlen + 1);
++	cmd = kmod_memdup(command, cmdlen + 1);
+ 	if (cmd == NULL)
+ 		return -ENOMEM;
+ 
+diff --git a/libkmod/libkmod.c b/libkmod/libkmod.c
+index f4510d0..8c4c367 100644
+--- a/libkmod/libkmod.c
++++ b/libkmod/libkmod.c
+@@ -170,7 +170,7 @@ static char *get_kernel_release(const char *dirname)
+ 	char *p;
+ 
+ 	if (dirname != NULL)
+-		return path_make_absolute_cwd(dirname);
++		return kmod_path_make_absolute_cwd(dirname);
+ 
+ 	if (uname(&u) < 0)
+ 		return NULL;
+diff --git a/shared/util.c b/shared/util.c
+index 4e3e7b5..0822493 100644
+--- a/shared/util.c
++++ b/shared/util.c
+@@ -42,7 +42,7 @@ static const struct kmod_ext {
+ /* string handling functions and memory allocations                         */
+ /* ************************************************************************ */
+ 
+-void *memdup(const void *p, size_t n)
++void *kmod_memdup(const void *p, size_t n)
+ {
+ 	void *r = malloc(n);
+ 
+@@ -371,7 +371,7 @@ char *freadline_wrapped(FILE *fp, unsigned int *linenum)
+ /* path handling functions                                                  */
+ /* ************************************************************************ */
+ 
+-char *path_make_absolute_cwd(const char *p)
++char *kmod_path_make_absolute_cwd(const char *p)
+ {
+ 	_cleanup_free_ char *cwd = NULL;
+ 	size_t plen, cwdlen;
+@@ -410,12 +410,12 @@ static inline int is_dir(const char *path)
+ 	return -errno;
+ }
+ 
+-int mkdir_p(const char *path, int len, mode_t mode)
++int kmod_mkdir_p(const char *path, int len, mode_t mode)
+ {
+ 	_cleanup_free_ char *start;
+ 	char *end;
+ 
+-	_clang_suppress_alloc_ start = memdup(path, len + 1);
++	_clang_suppress_alloc_ start = kmod_memdup(path, len + 1);
+ 	if (!start)
+ 		return -ENOMEM;
+ 
+@@ -473,7 +473,7 @@ int mkdir_parents(const char *path, mode_t mode)
+ 	if (end == NULL)
+ 		return 0;
+ 
+-	return mkdir_p(path, end - path, mode);
++	return kmod_mkdir_p(path, end - path, mode);
+ }
+ 
+ static unsigned long long ts_usec(const struct timespec *ts)
+diff --git a/shared/util.h b/shared/util.h
+index c6af2e3..61d6f6f 100644
+--- a/shared/util.h
++++ b/shared/util.h
+@@ -18,7 +18,7 @@
+ #define streq(a, b) (strcmp((a), (b)) == 0)
+ #define strstartswith(a, b) (strncmp(a, b, strlen(b)) == 0)
+ char *strchr_replace(char *s, char c, char r);
+-_nonnull_all_ void *memdup(const void *p, size_t n);
++_nonnull_all_ void *kmod_memdup(const void *p, size_t n);
+ 
+ /* module-related functions                                                 */
+ /* ************************************************************************ */
+@@ -45,13 +45,13 @@ _nonnull_(1) char *freadline_wrapped(FILE *fp, unsigned int *linenum);
+ 
+ /* path handling functions                                                  */
+ /* ************************************************************************ */
+-_must_check_ _nonnull_all_ char *path_make_absolute_cwd(const char *p);
++_must_check_ _nonnull_all_ char *kmod_path_make_absolute_cwd(const char *p);
+ static inline _must_check_ _nonnull_all_ bool path_is_absolute(const char *p)
+ {
+ 	return p[0] == '/';
+ }
+ 
+-int mkdir_p(const char *path, int len, mode_t mode);
++int kmod_mkdir_p(const char *path, int len, mode_t mode);
+ int mkdir_parents(const char *path, mode_t mode);
+ unsigned long long stat_mstamp(const struct stat *st);
+ 
+diff --git a/testsuite/init_module.c b/testsuite/init_module.c
+index 6d39fdb..09889af 100644
+--- a/testsuite/init_module.c
++++ b/testsuite/init_module.c
+@@ -145,7 +145,7 @@ static int create_sysfs_files(const char *modname)
+ 	strcpy(buf + len, modname);
+ 	len += strlen(modname);
+ 
+-	assert(mkdir_p(buf, len, 0755) >= 0);
++	assert(kmod_mkdir_p(buf, len, 0755) >= 0);
+ 
+ 	strcpy(buf + len, "/initstate");
+ 	return write_one_line_file(buf, "live\n", strlen("live\n"));
+diff --git a/tools/depmod.c b/tools/depmod.c
+index 0126124..ffb2816 100644
+--- a/tools/depmod.c
++++ b/tools/depmod.c
+@@ -266,7 +266,7 @@ static int index_insert(struct index_node *node, const char *key, const char *va
+ 				struct index_node *n;
+ 
+ 				/* New child is copy of node with prefix[j+1..N] */
+-				n = memdup(node, sizeof(struct index_node));
++				n = kmod_memdup(node, sizeof(struct index_node));
+ 				if (n == NULL)
+ 					fatal_oom();
+ 				n->prefix = strdup(&prefix[j + 1]);
+@@ -1133,7 +1133,7 @@ static int depmod_module_add(struct depmod *depmod, struct kmod_module *kmod)
+ 	if (mod->relpath != NULL) {
+ 		size_t uncrelpathlen = lastslash - mod->relpath + modnamesz +
+ 				       strlen(KMOD_EXTENSION_UNCOMPRESSED);
+-		mod->uncrelpath = memdup(mod->relpath, uncrelpathlen + 1);
++		mod->uncrelpath = kmod_memdup(mod->relpath, uncrelpathlen + 1);
+ 		if (mod->uncrelpath == NULL) {
+ 			err = -ENOMEM;
+ 			hash_del(depmod->modules_by_name, mod->modname);
+@@ -2597,7 +2597,7 @@ static int depmod_output(struct depmod *depmod, FILE *out)
+ 	if (out != NULL)
+ 		dfd = -1;
+ 	else {
+-		err = mkdir_p(dname, strlen(dname), 0755);
++		err = kmod_mkdir_p(dname, strlen(dname), 0755);
+ 		if (err < 0) {
+ 			CRIT("could not create directory %s: %m\n", dname);
+ 			return err;
+@@ -2946,7 +2946,7 @@ static int do_depmod(int argc, char *argv[])
+ 			break;
+ 		case 'b':
+ 			free(root_arg);
+-			root_arg = path_make_absolute_cwd(optarg);
++			root_arg = kmod_path_make_absolute_cwd(optarg);
+ 			if (root_arg == NULL) {
+ 				ERR("invalid image path %s\n", optarg);
+ 				goto cmdline_failed;
+@@ -2958,7 +2958,7 @@ static int do_depmod(int argc, char *argv[])
+ 			break;
+ 		case 'o':
+ 			free(out_root);
+-			out_root = path_make_absolute_cwd(optarg);
++			out_root = kmod_path_make_absolute_cwd(optarg);
+ 			if (out_root == NULL) {
+ 				ERR("invalid output directory %s\n", optarg);
+ 				goto cmdline_failed;

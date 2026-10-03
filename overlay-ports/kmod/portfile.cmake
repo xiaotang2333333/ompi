@@ -6,6 +6,7 @@ vcpkg_from_github(
     HEAD_REF master
     PATCHES
         library-only.patch
+        namespace-private-helpers.patch
 )
 
 set(KMOD_FEATURE_OPTIONS "")
