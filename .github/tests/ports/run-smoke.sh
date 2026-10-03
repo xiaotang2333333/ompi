@@ -33,6 +33,10 @@ modules=()
 libraries=()
 case "$PORT" in
   knem|valgrind) ;;
+  hwloc)
+    modules=(hwloc)
+    libraries=(-lhwloc -lpthread -ldl -lm)
+    ;;
   qthreads)
     modules=(qthread)
     libraries=(-lqthread -pthread -ldl -lrt -lm)
