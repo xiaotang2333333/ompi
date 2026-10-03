@@ -60,6 +60,13 @@
       "dependencies": [
         "cuda"
       ]
+    },
+    "rsmi": {
+      "description": "AMD GPU device discovery through the ROCm SMI library (a system ROCm installation must be present where configure runs)",
+      "supports": "linux",
+      "dependencies": [
+        "rocm"
+      ]
     }
   }
 }
