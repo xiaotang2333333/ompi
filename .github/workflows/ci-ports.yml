@@ -30,6 +30,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - {port: hwloc, triplet: x64-linux, linkage: static}
+          - {port: hwloc, triplet: x64-linux-dynamic, linkage: dynamic}
           - {port: knem, triplet: x64-linux, linkage: headers}
           - {port: valgrind, triplet: x64-linux, linkage: headers}
           - {port: libnl, triplet: x64-linux, linkage: static}
@@ -49,6 +51,8 @@ jobs:
           - {port: ucx, triplet: x64-linux-dynamic, linkage: dynamic}
           - {port: ucc, triplet: x64-linux-dynamic, linkage: dynamic}
           - {port: openmpi, triplet: x64-linux-dynamic, linkage: dynamic}
+          - {port: hwloc, triplet: arm64-linux, linkage: static}
+          - {port: hwloc, triplet: arm64-linux-dynamic, linkage: dynamic}
           - {port: knem, triplet: arm64-linux, linkage: headers}
           - {port: valgrind, triplet: arm64-linux, linkage: headers}
           - {port: libnl, triplet: arm64-linux, linkage: static}
