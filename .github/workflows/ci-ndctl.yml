@@ -1,0 +1,90 @@
+name: Static Library Composition CI
+
+on:
+  push:
+    branches: [ci-static-libs]
+    paths:
+      - overlay-ports/kmod/**
+      - overlay-ports/libsystemd/**
+      - overlay-ports/ndctl/**
+      - .github/tests/ports/**
+      - .github/workflows/ci-ndctl.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: static-libs-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VCPKG_COMMIT: 3aea538b2bb21a586502c67b00eb474fdd2e3098
+  VCPKG_DISABLE_METRICS: "1"
+  VCPKG_BINARY_SOURCES: clear
+
+jobs:
+  ndctl:
+    name: ndctl and private-symbol isolation / ${{ matrix.triplet }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        triplet: [x64-linux, x64-linux-dynamic, arm64-linux, arm64-linux-dynamic]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config python3 gperf \
+            autoconf autoconf-archive automake libtool libtool-bin m4 gettext zip unzip tar git
+      - name: Install AArch64 toolchain
+        if: startsWith(matrix.triplet, 'arm64-')
+        run: sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+      - name: Bootstrap pinned vcpkg
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/microsoft/vcpkg.git vcpkg
+          git -C vcpkg checkout "$VCPKG_COMMIT"
+          ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+      - name: Build ndctl with kmod and libudev
+        run: |
+          ./vcpkg/vcpkg install "ndctl:${{ matrix.triplet }}" --classic --host-triplet=x64-linux \
+            --overlay-ports="$GITHUB_WORKSPACE/overlay-ports" \
+            --x-install-root="$GITHUB_WORKSPACE/installed"
+      - name: Check private symbols and installed consumers
+        env:
+          PORT: ndctl
+          TRIPLET: ${{ matrix.triplet }}
+        run: |
+          export LINKAGE=static
+          if [[ "$TRIPLET" == *-dynamic ]]; then export LINKAGE=dynamic; fi
+          if [[ "$LINKAGE" == static ]]; then
+            root="$GITHUB_WORKSPACE/installed/$TRIPLET"
+            for libdir in "$root/lib" "$root/debug/lib"; do
+              nm -g --defined-only "$libdir/libkmod.a" > "$RUNNER_TEMP/kmod-symbols.txt"
+              awk '$NF == "memdup" || $NF == "path_make_absolute_cwd" || $NF == "mkdir_p" { bad = 1 }
+                   END { exit bad }' "$RUNNER_TEMP/kmod-symbols.txt"
+              nm -g --defined-only "$libdir/libudev.a" > "$RUNNER_TEMP/udev-symbols.txt"
+              awk '$2 ~ /^[BDRT]$/ { print $3 }' "$RUNNER_TEMP/kmod-symbols.txt" | sort -u > "$RUNNER_TEMP/kmod-strong.txt"
+              awk '$2 ~ /^[BDRT]$/ { print $3 }' "$RUNNER_TEMP/udev-symbols.txt" | sort -u > "$RUNNER_TEMP/udev-strong.txt"
+              comm -12 "$RUNNER_TEMP/kmod-strong.txt" "$RUNNER_TEMP/udev-strong.txt" > "$RUNNER_TEMP/colliding-symbols.txt"
+              if [[ -s "$RUNNER_TEMP/colliding-symbols.txt" ]]; then
+                cat "$RUNNER_TEMP/colliding-symbols.txt"
+                exit 1
+              fi
+            done
+          fi
+          bash .github/tests/ports/run-smoke.sh
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-libs-${{ matrix.triplet }}-logs
+          if-no-files-found: ignore
+          retention-days: 7
+          path: vcpkg/buildtrees/**/*.log
