@@ -57,15 +57,6 @@ if("cuda" IN_LIST FEATURES OR "nvml" IN_LIST FEATURES)
     list(APPEND HWLOC_FEATURE_OPTIONS "--with-cuda=${CUDA_TOOLKIT_ROOT}")
 endif()
 
-if("levelzero" IN_LIST FEATURES AND VCPKG_LIBRARY_LINKAGE STREQUAL "static" AND VCPKG_TARGET_IS_LINUX)
-    # Upstream libze_loader.pc ships no Libs.private, and hwloc resolves it
-    # with plain `pkg-config --libs` (never --static), so the C++ runtime the
-    # loader needs is missing on static triplets.  hwloc lets configure take
-    # the flags from HWLOC_LEVELZERO_LIBS instead; the value is substituted
-    # into hwloc.pc, so static consumers inherit -lstdc++ as well.
-    set(ENV{HWLOC_LEVELZERO_LIBS} "-lze_loader -lstdc++")
-endif()
-
 # pci (libpciaccess) and gl (libXNVCtrl) have no vcpkg dependency port, so
 # they cannot be offered as features and stay disabled.
 list(APPEND HWLOC_FEATURE_OPTIONS
