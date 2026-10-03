@@ -34,7 +34,7 @@ verify_hwloc_features() {
   local libdir="$1"
   local needed feature pattern
   needed=$(readelf -d "$libdir/libhwloc.so")
-  for feature in libxml2 opencl levelzero libudev cuda nvml; do
+  for feature in libxml2 opencl levelzero libudev cuda nvml rsmi; do
     [[ ",${FEATURES:-}," == *",$feature,"* ]] || continue
     case "$feature" in
       libxml2)   pattern='libxml2\.so' ;;
@@ -43,6 +43,7 @@ verify_hwloc_features() {
       libudev)   pattern='libudev\.so' ;;
       cuda)      pattern='libcuda\.so' ;;
       nvml)      pattern='libnvidia-ml\.so' ;;
+      rsmi)      pattern='librocm_smi64\.so' ;;
     esac
     grep -qE "NEEDED.*$pattern" <<<"$needed" \
       || { echo "hwloc[$feature] did not link $pattern into libhwloc.so" >&2; exit 1; }
