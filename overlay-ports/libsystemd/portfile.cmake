@@ -47,6 +47,7 @@ set(LIBSYSTEMD_MESON_OPTIONS
   -Dlibidn=disabled
   -Dlibidn2=disabled
   -Dlibiptc=disabled
+  -Dlibcrypt=disabled
   -Dmicrohttpd=disabled
   -Dopenssl=disabled
   -Dp11kit=disabled

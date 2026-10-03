@@ -13,7 +13,15 @@ if [[ "$TRIPLET" == arm64-* ]]; then
 fi
 verify_arm64() {
   local file="$1"
-  readelf -h "$file" > "$RUNNER_TEMP/$PORT-elf-headers.txt"
+  if [[ "$file" == *.a ]]; then
+    # Static libraries are ar archives, not ELF files; verify their members.
+    local first
+    first=$(ar t "$file" | head -n1)
+    test -n "$first"
+    ar p "$file" "$first" | readelf -h - > "$RUNNER_TEMP/$PORT-elf-headers.txt"
+  else
+    readelf -h "$file" > "$RUNNER_TEMP/$PORT-elf-headers.txt"
+  fi
   awk '$1 == "Machine:" { count++; if ($2 != "AArch64") bad = 1 }
        END { exit (!count || bad) }' "$RUNNER_TEMP/$PORT-elf-headers.txt"
 }
@@ -23,7 +31,14 @@ modules=()
 libraries=()
 case "$PORT" in
   knem|valgrind) ;;
-  qthreads) modules=(qthread); libraries=(-lqthread -pthread -ldl -lrt -lm) ;;
+  qthreads)
+    modules=(qthread)
+    libraries=(-lqthread -pthread -ldl -lrt -lm)
+    if [[ ",${FEATURES:-}," == *",hwloc,"* ]]; then
+      modules+=(hwloc)
+      libraries+=(-lhwloc -lnuma)
+    fi
+    ;;
   memkind) modules=(memkind); libraries=(-lmemkind -lnuma -pthread -ldl -lm) ;;
   munge) modules=(munge); libraries=(-lmunge) ;;
   libnl)
