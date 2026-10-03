@@ -28,6 +28,28 @@ verify_arm64() {
        END { exit (!count || bad) }' "$headers"
 }
 
+# A dynamically linked libhwloc must actually carry the requested optional
+# backends; this is what proves a feature was not silently dropped.
+verify_hwloc_features() {
+  local libdir="$1"
+  local needed feature pattern
+  needed=$(readelf -d "$libdir/libhwloc.so")
+  for feature in libxml2 opencl levelzero libudev cuda nvml; do
+    [[ ",${FEATURES:-}," == *",$feature,"* ]] || continue
+    case "$feature" in
+      libxml2)   pattern='libxml2\.so' ;;
+      opencl)    pattern='libOpenCL\.so' ;;
+      levelzero) pattern='libze_loader\.so' ;;
+      libudev)   pattern='libudev\.so' ;;
+      cuda)      pattern='libcuda\.so' ;;
+      nvml)      pattern='libnvidia-ml\.so' ;;
+    esac
+    grep -qE "NEEDED.*$pattern" <<<"$needed" \
+      || { echo "hwloc[$feature] did not link $pattern into libhwloc.so" >&2; exit 1; }
+    echo "hwloc[$feature] links $pattern"
+  done
+}
+
 includes=("-I$root/include")
 modules=()
 libraries=()
@@ -36,6 +58,10 @@ case "$PORT" in
   hwloc)
     modules=(hwloc)
     libraries=(-lhwloc -lpthread -ldl -lm)
+    if [[ ",${FEATURES:-}," == *",libudev,"* ]]; then
+      # libudev is compiled into libhwloc; static consumers need it explicitly.
+      libraries+=(-ludev)
+    fi
     ;;
   qthreads)
     modules=(qthread)
@@ -120,6 +146,9 @@ for config in "${configs[@]}"; do
     if [[ "$cross" == true ]]; then
       verify_arm64 "$libdir/lib$primary_library.$extension"
     fi
+    if [[ "$PORT" == hwloc && "$LINKAGE" != static ]]; then
+      verify_hwloc_features "$libdir"
+    fi
   fi
   for module in "${modules[@]}"; do
     pkg-config --modversion "$module"
@@ -134,6 +163,12 @@ for config in "${configs[@]}"; do
   integrations=(direct)
   if (( ${#modules[@]} )); then
     integrations+=(pkgconfig)
+  fi
+  if [[ "$PORT" == hwloc && "$LINKAGE" == static && -n "${FEATURES:-}" ]]; then
+    # A feature-rich static libhwloc pulls in transitive dependencies
+    # (libxml2, libze_loader, ...) that only hwloc.pc resolves; the explicit
+    # direct list would just duplicate pkg-config's closure.
+    integrations=(pkgconfig)
   fi
   for integration in "${integrations[@]}"; do
     binary="$RUNNER_TEMP/$PORT-$config-$integration"
