@@ -4,17 +4,15 @@ vcpkg_from_github(
     REF "v${VERSION}"
     SHA512 9420b8dd115c6e509d5f9b381656615bfcda920ad589f184645f522e88352b380d27a15c8c148a02591221d6c57bff4fd90482a5c8b18e3a85227b454ba9a6ec
     HEAD_REF master
-)
-
-# Upstream's libze_loader.pc declares no Libs.private, but the loader archive
-# is built from C++.  Static consumers then fail with undefined std::* and
-# __cxa_* symbols: hwloc's configure probe runs plain `pkg-config --libs`
-# (never --static), and vcpkg folds Libs.private into Libs for static triplets,
-# so declaring the runtime here fixes both the probe and every consumer.
-vcpkg_replace_string(
-    "${SOURCE_PATH}/source/libze_loader.pc.in"
-    "Libs: -L\${libdir} -lze_loader"
-    "Libs: -L\${libdir} -lze_loader\nLibs.private: -lstdc++"
+    PATCHES
+        # Upstream's libze_loader.pc declares no Libs.private although the
+        # loader archive is C++, so static C consumers (hwloc's configure
+        # probe runs plain `pkg-config --libs`) fail with undefined std::* and
+        # __cxa_* symbols.  The patch derives Libs.private from the toolchain
+        # (GCC -> -lstdc++, clang+libc++ -> -lc++, MinGW -> -lstdc++, nothing
+        # on MSVC), the same approach the registered lerc and libde265 ports
+        # take; vcpkg folds Libs.private into Libs for static triplets.
+        cxx-linkage-pkgconfig.patch
 )
 
 vcpkg_list(SET options)
