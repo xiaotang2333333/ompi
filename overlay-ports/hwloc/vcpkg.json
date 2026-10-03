@@ -8,5 +8,58 @@
   ],
   "homepage": "https://github.com/open-mpi/hwloc",
   "license": "BSD-2-Clause",
-  "supports": "!uwp"
+  "supports": "!uwp",
+  "features": {
+    "libxml2": {
+      "description": "XML topology import/export through libxml2 instead of the minimal built-in parser",
+      "dependencies": [
+        "libxml2"
+      ]
+    },
+    "cairo": {
+      "description": "Cairo back-end for lstopo (PNG/SVG and interactive output)",
+      "dependencies": [
+        "cairo"
+      ]
+    },
+    "opencl": {
+      "description": "OpenCL device discovery",
+      "dependencies": [
+        "opencl"
+      ]
+    },
+    "levelzero": {
+      "description": "oneAPI Level Zero device discovery",
+      "supports": "x64 & (linux | windows)",
+      "dependencies": [
+        "level-zero"
+      ]
+    },
+    "libudev": {
+      "description": "Linux hot-plug device discovery through libudev",
+      "supports": "linux",
+      "dependencies": [
+        {
+          "name": "libsystemd",
+          "features": [
+            "libudev"
+          ]
+        }
+      ]
+    },
+    "cuda": {
+      "description": "CUDA device discovery (a system CUDA toolkit must be installed where configure runs)",
+      "supports": "x64 & (linux | windows)",
+      "dependencies": [
+        "cuda"
+      ]
+    },
+    "nvml": {
+      "description": "NVIDIA NVML device discovery (a system CUDA toolkit must be installed where configure runs)",
+      "supports": "x64 & (linux | windows)",
+      "dependencies": [
+        "cuda"
+      ]
+    }
+  }
 }
