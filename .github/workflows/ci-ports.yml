@@ -38,6 +38,7 @@ jobs:
           - {port: valgrind, triplet: x64-linux, linkage: headers}
           - {port: libnl, triplet: x64-linux, linkage: static}
           - {port: libnl, triplet: x64-linux-dynamic, linkage: dynamic}
+          - {port: libnl, triplet: x64-linux, linkage: static, features: cli}
           - {port: memkind, triplet: x64-linux, linkage: static}
           - {port: memkind, triplet: x64-linux-dynamic, linkage: dynamic}
           - {port: munge, triplet: x64-linux, linkage: static}
@@ -60,6 +61,7 @@ jobs:
           - {port: valgrind, triplet: arm64-linux, linkage: headers}
           - {port: libnl, triplet: arm64-linux, linkage: static}
           - {port: libnl, triplet: arm64-linux-dynamic, linkage: dynamic}
+          - {port: libnl, triplet: arm64-linux-dynamic, linkage: dynamic, features: cli}
           - {port: memkind, triplet: arm64-linux, linkage: static}
           - {port: memkind, triplet: arm64-linux-dynamic, linkage: dynamic}
           - {port: munge, triplet: arm64-linux, linkage: static}
