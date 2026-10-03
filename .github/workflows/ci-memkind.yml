@@ -1,0 +1,93 @@
+name: Memkind Focused CI
+
+on:
+  push:
+    branches: [ci-memkind]
+    paths:
+      - overlay-ports/memkind/**
+      - .github/tests/ports/**
+      - .github/workflows/ci-memkind.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: memkind-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VCPKG_COMMIT: 3aea538b2bb21a586502c67b00eb474fdd2e3098
+  VCPKG_DISABLE_METRICS: "1"
+  VCPKG_BINARY_SOURCES: clear
+
+jobs:
+  configure:
+    name: Patch order and generated configure
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Autotools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf autoconf-archive automake libtool libtool-bin m4 cmake git
+      - name: Validate production patch chain and generated shell
+        run: cmake -DCHECK_ROOT="$RUNNER_TEMP/memkind-preflight" -P .github/tests/ports/check-memkind-configure.cmake
+
+  memkind:
+    name: memkind[${{ matrix.features }}] / ${{ matrix.triplet }}
+    needs: configure
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        triplet: [x64-linux, x64-linux-dynamic, arm64-linux, arm64-linux-dynamic]
+        features: ['', hwloc, daxctl, 'hwloc,daxctl']
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config python3 gperf \
+            autoconf autoconf-archive automake libtool libtool-bin m4 gettext zip unzip tar git
+      - name: Install AArch64 toolchain
+        if: startsWith(matrix.triplet, 'arm64-')
+        run: sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+      - name: Bootstrap pinned vcpkg
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/microsoft/vcpkg.git vcpkg
+          git -C vcpkg checkout "$VCPKG_COMMIT"
+          ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+      - name: Build selected Memkind features
+        env:
+          FEATURES: ${{ matrix.features }}
+          TRIPLET: ${{ matrix.triplet }}
+        run: |
+          spec=memkind
+          if [[ -n "$FEATURES" ]]; then spec="memkind[$FEATURES]"; fi
+          ./vcpkg/vcpkg install "$spec:$TRIPLET" --classic --host-triplet=x64-linux \
+            --overlay-ports="$GITHUB_WORKSPACE/overlay-ports" \
+            --x-install-root="$GITHUB_WORKSPACE/installed"
+      - name: Verify installed consumers
+        env:
+          PORT: memkind
+          FEATURES: ${{ matrix.features }}
+          TRIPLET: ${{ matrix.triplet }}
+        run: |
+          export LINKAGE=static
+          if [[ "$TRIPLET" == *-dynamic ]]; then export LINKAGE=dynamic; fi
+          bash .github/tests/ports/run-smoke.sh
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: memkind-${{ matrix.features || 'core' }}-${{ matrix.triplet }}-logs
+          if-no-files-found: ignore
+          retention-days: 7
+          path: vcpkg/buildtrees/**/*.log

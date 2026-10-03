@@ -1,8 +1,7 @@
 diff --git a/configure.ac b/configure.ac
-index 8b396ff..5dd6fa9 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -267,13 +267,16 @@ if test "x$enable_daxctl" = "x1" ; then
+@@ -267,13 +267,17 @@ if test "x$enable_daxctl" = "x1" ; then
      AC_CHECK_LIB(daxctl, daxctl_dev_get_memory, [daxctl_kmem=yes], [daxctl_kmem=no])
  fi
  if test "x$enable_daxctl" = "x2" ; then
@@ -14,14 +13,15 @@ index 8b396ff..5dd6fa9 100644
      AC_DEFINE([MEMKIND_DAXCTL_KMEM], [1], [Automatic recognition of PMEM as system memory in MEMKIND_DAX_KMEM])
      AC_SUBST(DAXCTL_LIBS, [-ldaxctl])
 -    LDFLAGS="$LDFLAGS -ldaxctl"
-+    AC_SUBST(DAXCTL_PC, [libdaxctl])
++    DAXCTL_PC=libdaxctl
 +    LDFLAGS="$LDFLAGS -ldaxctl -luuid -lkmod -ldl -lm -lpthread"
 +else
-+    AC_SUBST(DAXCTL_PC, [])
++    DAXCTL_PC=
  fi
  AC_SUBST([enable_daxctl])
++AC_SUBST([DAXCTL_PC])
  
-@@ -292,13 +295,16 @@ if test "x$enable_hwloc" = "x1" ; then
+@@ -292,13 +296,17 @@ if test "x$enable_hwloc" = "x1" ; then
      AC_CHECK_LIB(hwloc, hwloc_memattr_get_best_target, [hwloc_hmat=yes], [hwloc_hmat=no])
  fi
  if test "x$enable_hwloc" = "x2" ; then
@@ -33,12 +33,13 @@ index 8b396ff..5dd6fa9 100644
      AC_DEFINE([MEMKIND_HWLOC], [1], [Support for hwloc library])
      AC_SUBST(HWLOC_LIBS, [-lhwloc])
 -    LDFLAGS="$LDFLAGS -lhwloc"
-+    AC_SUBST(HWLOC_PC, [hwloc])
++    HWLOC_PC=hwloc
 +    LDFLAGS="$LDFLAGS -lhwloc -lpthread -ldl -lm"
 +else
-+    AC_SUBST(HWLOC_PC, [])
++    HWLOC_PC=
  fi
  AC_SUBST([enable_hwloc])
++AC_SUBST([HWLOC_PC])
  
 
 diff --git a/memkind.pc.in b/memkind.pc.in
