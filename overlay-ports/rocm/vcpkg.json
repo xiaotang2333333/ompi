@@ -1,0 +1,11 @@
+{
+  "name": "rocm",
+  "version": "5.0",
+  "description": [
+    "AMD ROCm platform (verification port)",
+    "This package does not install ROCm. It instead verifies that a ROCm toolkit is installed, in the same way the cuda port verifies a CUDA toolkit. Other packages can depend on this package to declare a dependency on a system ROCm installation."
+  ],
+  "homepage": "https://rocm.docs.amd.com/",
+  "license": null,
+  "supports": "linux"
+}
