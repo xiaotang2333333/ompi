@@ -1,0 +1,38 @@
+diff --git a/source/CMakeLists.txt b/source/CMakeLists.txt
+index 0487f3d..0ba791b 100644
+--- a/source/CMakeLists.txt
++++ b/source/CMakeLists.txt
+@@ -91,6 +91,23 @@ file(RELATIVE_PATH pkgconfig_prefix "${CMAKE_INSTALL_FULL_LIBDIR}/pkgconfig" "${
+ file(RELATIVE_PATH pkgconfig_include_dir "${CMAKE_INSTALL_PREFIX}" "${CMAKE_INSTALL_FULL_INCLUDEDIR}")
+ file(RELATIVE_PATH pkgconfig_lib_dir "${CMAKE_INSTALL_PREFIX}" "${CMAKE_INSTALL_FULL_LIBDIR}")
+ 
++# The loader is built from C++, so a static consumer that is itself C needs
++# the C++ runtime listed in Libs.private.  Derive it from the toolchain the
++# way other vcpkg ports do: GCC -> -lstdc++, clang with libc++ -> -lc++,
++# MinGW -> -lstdc++.  MSVC must stay empty: its objects already carry the
++# runtime as defaultlib directives and it does not understand -lstdc++.
++set(pkgconfig_libs_private "")
++if(NOT MSVC)
++    foreach(lib IN LISTS CMAKE_CXX_IMPLICIT_LINK_LIBRARIES)
++        if(lib IN_LIST CMAKE_C_IMPLICIT_LINK_LIBRARIES)
++            continue()
++        elseif(EXISTS "${lib}")
++            string(APPEND pkgconfig_libs_private " ${lib}")
++        else()
++            string(APPEND pkgconfig_libs_private " -l${lib}")
++        endif()
++    endforeach()
++endif()
+ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/libze_loader.pc.in ${CMAKE_CURRENT_BINARY_DIR}/libze_loader.pc @ONLY)
+ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/level-zero.pc.in ${CMAKE_CURRENT_BINARY_DIR}/level-zero.pc @ONLY)
+ 
+diff --git a/source/libze_loader.pc.in b/source/libze_loader.pc.in
+index 97f48a4..b4bea67 100644
+--- a/source/libze_loader.pc.in
++++ b/source/libze_loader.pc.in
+@@ -8,4 +8,5 @@ URL: https://github.com/oneapi-src/level-zero
+ Version: @PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@.@PROJECT_VERSION_PATCH@
+ Requires: 
+ Libs: -L${libdir} -lze_loader
++Libs.private: @pkgconfig_libs_private@
+ CFlags: -I${includedir}
