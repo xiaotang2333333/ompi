@@ -32,12 +32,45 @@ foreach(hwloc_backend IN ITEMS libxml2 cairo opencl levelzero libudev cuda nvml)
         list(APPEND HWLOC_FEATURE_OPTIONS "--disable-${hwloc_backend}")
     endif()
 endforeach()
-# pci (libpciaccess), gl (libXNVCtrl) and rsmi (ROCm SMI) have no vcpkg
-# dependency port, so they cannot be offered as features and stay disabled.
+
+# ROCm SMI: upstream tries the AMD SMI backend first and fails hard when both
+# backends are found at once, and the AMD SMI backend additionally needs the
+# /opt/amdgpu headers of ROCm >= 6.4.  Pin the feature to the ROCm SMI
+# implementation and hand configure the toolkit that the rocm port located.
+if("rsmi" IN_LIST FEATURES)
+    include("${CURRENT_INSTALLED_DIR}/share/rocm/vcpkg-port-config.cmake")
+    vcpkg_find_rocm(OUT_ROCM_TOOLKIT_ROOT ROCM_TOOLKIT_ROOT)
+    list(APPEND HWLOC_FEATURE_OPTIONS
+        --enable-rsmi
+        --disable-rsmi-amd
+        "--with-rocm=${ROCM_TOOLKIT_ROOT}"
+    )
+else()
+    list(APPEND HWLOC_FEATURE_OPTIONS --disable-rsmi)
+endif()
+
+# hwloc only auto-detects the hard-coded /usr/local/cuda layout; forward the
+# toolkit that the cuda port located (CUDA_PATH/CUDA_HOME or /usr/local/cuda-*).
+if("cuda" IN_LIST FEATURES OR "nvml" IN_LIST FEATURES)
+    include("${CURRENT_INSTALLED_DIR}/share/cuda/vcpkg-port-config.cmake")
+    vcpkg_find_cuda(OUT_CUDA_TOOLKIT_ROOT CUDA_TOOLKIT_ROOT)
+    list(APPEND HWLOC_FEATURE_OPTIONS "--with-cuda=${CUDA_TOOLKIT_ROOT}")
+endif()
+
+if("levelzero" IN_LIST FEATURES AND VCPKG_LIBRARY_LINKAGE STREQUAL "static" AND VCPKG_TARGET_IS_LINUX)
+    # Upstream libze_loader.pc ships no Libs.private, and hwloc resolves it
+    # with plain `pkg-config --libs` (never --static), so the C++ runtime the
+    # loader needs is missing on static triplets.  hwloc lets configure take
+    # the flags from HWLOC_LEVELZERO_LIBS instead; the value is substituted
+    # into hwloc.pc, so static consumers inherit -lstdc++ as well.
+    set(ENV{HWLOC_LEVELZERO_LIBS} "-lze_loader -lstdc++")
+endif()
+
+# pci (libpciaccess) and gl (libXNVCtrl) have no vcpkg dependency port, so
+# they cannot be offered as features and stay disabled.
 list(APPEND HWLOC_FEATURE_OPTIONS
     --disable-pci
     --disable-gl
-    --disable-rsmi
 )
 
 vcpkg_configure_make(
